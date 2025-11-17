@@ -49,6 +49,7 @@ export async function editImageWithHuggingFace(
     }
 
     // Call the image-to-image API using the correct model and provider
+    // Using 'as any' because provider parameter is supported by the API but not yet in type definitions
     const resultBlob = await hf.imageToImage(
       {
         model: "nvidia/ChronoEdit-14B-Diffusers",
@@ -59,7 +60,7 @@ export async function editImageWithHuggingFace(
       },
       {
         provider: "fal-ai",
-      }
+      } as any
     );
 
     // Convert the result blob to base64
