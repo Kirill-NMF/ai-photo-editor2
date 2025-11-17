@@ -10,7 +10,14 @@ import PromptSuggestions from "@/components/PromptSuggestions";
 import ProcessingIndicator from "@/components/ProcessingIndicator";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Upload as UploadIcon } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Upload as UploadIcon, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Image, Edit } from "@shared/schema";
@@ -27,6 +34,7 @@ export default function EditorPage() {
   const [currentBaseEditId, setCurrentBaseEditId] = useState<number | null>(null);
   const [overwriteLastSave, setOverwriteLastSave] = useState(false);
   const [promptText, setPromptText] = useState("");
+  const [apiProvider, setApiProvider] = useState<"pollinations" | "replicate" | "gemini">("pollinations");
   const { toast } = useToast();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
@@ -294,6 +302,7 @@ export default function EditorPage() {
       const requestBody: any = {
         imageId: uploadedImage.id,
         prompt: prompt,
+        provider: apiProvider,
       };
       
       if (currentBaseEditId !== null) {
@@ -582,12 +591,53 @@ export default function EditorPage() {
               suggestions={mockSuggestions}
               onSelect={handleSuggestionSelect}
             />
-            <PromptInput 
-              value={promptText}
-              onChange={handlePromptChange}
-              onSubmit={handlePromptSubmit} 
-              isProcessing={isProcessing} 
-            />
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <PromptInput 
+                  value={promptText}
+                  onChange={handlePromptChange}
+                  onSubmit={handlePromptSubmit} 
+                  isProcessing={isProcessing} 
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 pb-0.5">
+                <label className="text-xs font-medium text-muted-foreground px-1">
+                  AI Provider
+                </label>
+                <Select 
+                  value={apiProvider} 
+                  onValueChange={(value: "pollinations" | "replicate" | "gemini") => setApiProvider(value)}
+                  data-testid="select-provider"
+                >
+                  <SelectTrigger className="w-48 h-9" data-testid="trigger-provider">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pollinations" data-testid="option-pollinations">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Pollinations</span>
+                        <span className="text-xs text-muted-foreground">(Free)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="replicate" data-testid="option-replicate">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Replicate SDXL</span>
+                        <span className="text-xs text-muted-foreground">(Pro)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="gemini" data-testid="option-gemini">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Gemini</span>
+                        <span className="text-xs text-muted-foreground">(Paid)</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
       </div>
