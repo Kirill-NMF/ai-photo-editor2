@@ -1,0 +1,172 @@
+ISSUE: Replicate API requires payment after a short trial. The application needs a truly free image-to-image editing provider.
+
+GOAL: Replace the Replicate API with the Hugging Face Inference API. Update the dropdown menu in the editor to show "H: Hugging Face (Free)" instead of "R: Replicate (Pro)".
+
+STRATEGY: This will be a multi-step process:
+1. **Dependencies:** Install the `@huggingface/inference` package and uninstall `replicate`.
+2. **Backend:** Create a new API handler file for Hugging Face, remove the Replicate handler, and update the routes.
+3. **Frontend:** Update the dropdown menu in the editor UI.
+4. **Environment:** Update the Secrets to use `HUGGINGFACE_API_KEY`.
+
+Use the following reference code snippets as a guide.
+
+═══════════════════════════════════════════════════════════════════════
+REFERENCE CODE PROVIDED:
+═══════════════════════════════════════════════════════════════════════
+
+1. **Backend API Handler for Hugging Face (`server/huggingface.ts`)**: NEW FILE
+2. **Backend Routes (`server/routes.ts`)**: UPDATE to replace Replicate with Hugging Face
+3. **Frontend Editor Component (`src/components/EditorPage.jsx`)**: UPDATE to change dropdown option
+
+═══════════════════════════════════════════════════════════════════════
+IMPLEMENTATION INSTRUCTIONS:
+═══════════════════════════════════════════════════════════════════════
+
+**TASK 1: UPDATE DEPENDENCIES**
+
+1. In the Shell, run: `npm install @huggingface/inference`
+2. In the Shell, run: `npm uninstall replicate`
+
+**TASK 2: BACKEND API HANDLERS**
+
+1. **CREATE `server/huggingface.ts`**: This file will handle free image-to-image editing via Hugging Face Inference API. Requires `HUGGINGFACE_API_KEY` from environment.
+
+2. **DELETE `server/replicate.ts`**: This file is no longer needed.
+
+**TASK 3: BACKEND ROUTING**
+
+1. **UPDATE `server/routes.ts`**:
+   - Remove the import for `editWithReplicate`.
+   - Add an import for `editWithHuggingFace` from `huggingface.ts`.
+   - In the `switch` statement, replace the `case 'replicate'` with `case 'huggingface'`.
+
+**TASK 4: FRONTEND UI**
+
+1. **UPDATE `src/components/EditorPage.jsx`**:
+   - Find the `<select>` dropdown menu.
+   - Replace the "R: Replicate (Pro)" option with "H: Hugging Face (Free)".
+   - Update the `value` of the new option to `huggingface`.
+
+**TASK 5: UPDATE SECRETS**
+
+1. The user will need to add a `HUGGINGFACE_API_KEY` to Secrets. The `REPLICATE_API_TOKEN` can be removed.
+
+═══════════════════════════════════════════════════════════════════════
+CODE SNIPPET 1: `server/huggingface.ts` (NEW FILE)
+═══════════════════════════════════════════════════════════════════════
+
+```typescript
+import { HfInference } from '@huggingface/inference';
+import fetch from 'node-fetch';
+
+/**
+ * Edit an image using Hugging Face Inference API (free tier)
+ * Requires HUGGINGFACE_API_KEY in environment
+ */
+export async function editWithHuggingFace(prompt: string, imageUrl: string): Promise<{ imageUrl: string }> {
+  const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
+  try {
+    if (!imageUrl) {
+      throw new Error('Input image is required for Hugging Face image-to-image editing.');
+    }
+
+    // Fetch the image from the URL
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image from URL: ${imageUrl}`);
+    }
+    const imageBlob = await response.blob();
+
+    // Call the image-to-image API
+    const resultBlob = await hf.imageToImage({
+      model: 'Qwen/Qwen-Image-Edit',
+      inputs: imageBlob,
+      parameters: {
+        prompt: prompt,
+      },
+    });
+
+    // Convert the result blob to a data URL to return to the client
+    const arrayBuffer = await resultBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const dataUrl = `data:${resultBlob.type};base64,${buffer.toString('base64')}`;
+
+    return { imageUrl: dataUrl };
+  } catch (error) {
+    throw new Error(`Hugging Face API error: ${error.message}`);
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 2: server/routes.ts (UPDATE EXISTING FILE) ═══════════════════════════════════════════════════════════════════════
+
+TypeScript
+
+
+// REMOVE this import
+// import { editWithReplicate } from './replicate';
+
+// ADD this import
+import { editWithHuggingFace } from './huggingface';
+
+// Find your existing POST /api/edit endpoint and update the switch statement:
+app.post('/api/edit', async (req, res) => {
+  const { prompt, image, provider } = req.body;
+
+  // ... (existing validation) ...
+
+  try {
+    let result;
+    
+    switch (provider) {
+      case 'pollinations':
+        result = await editWithPollinations(prompt, image);
+        break;
+      
+      // REPLACE 'replicate' with 'huggingface'
+      case 'huggingface':
+        if (!process.env.HUGGINGFACE_API_KEY) {
+          return res.status(500).json({ 
+            error: 'Hugging Face API key not configured. Please add HUGGINGFACE_API_KEY to Secrets.' 
+          });
+        }
+        result = await editWithHuggingFace(prompt, image);
+        break;
+      
+      case 'gemini':
+        // ... (existing Gemini case) ...
+        break;
+      
+      default:
+        return res.status(400).json({ error: `Invalid provider: ${provider}` });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error(`Error with provider ${provider}:`, error);
+    res.status(500).json({ 
+      error: `Failed to edit image with ${provider}: ${error.message}` 
+    });
+  }
+});
+
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 3: src/components/EditorPage.jsx (UPDATE EXISTING FILE) ═══════════════════════════════════════════════════════════════════════
+
+JSX
+
+
+// Find the <select> dropdown and update the options:
+<select 
+  value={apiProvider} 
+  onChange={(e) => setApiProvider(e.target.value)}
+  // ... (existing styles) ...
+>
+  <option value="pollinations">P: Pollinations (Free)</option>
+  {/* REPLACE the Replicate option with this one */}
+  <option value="huggingface">H: Hugging Face (Free)</option>
+  <option value="gemini">G: Gemini (Paid)</option>
+</select>
+
+
