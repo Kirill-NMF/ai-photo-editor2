@@ -11,6 +11,8 @@ import { insertImageSchema, edits } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
+import { editImageWithPollinations } from "./pollinations";
+import { editImageWithReplicate } from "./replicate";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -219,8 +221,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageId: z.number(),
         prompt: z.string().min(1).max(500),
         baseEditId: z.number().optional(),
+        provider: z.enum(["pollinations", "replicate", "gemini"]).default("pollinations"),
       });
-      const { imageId, prompt, baseEditId } = editRequestSchema.parse(req.body);
+      const { imageId, prompt, baseEditId, provider } = editRequestSchema.parse(req.body);
 
       // Get the image
       const image = await storage.getImage(imageId);
@@ -264,12 +267,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contentType = (await imageFile.getMetadata())[0].contentType || "image/jpeg";
       const imageDataUrl = `data:${contentType};base64,${sourceImageBase64}`;
 
-      // Call Gemini API to edit the image
-      console.log("Calling Gemini API to edit image...", { prompt });
-      const editResult = await editImageWithGemini({
-        imageUrl: imageDataUrl,
-        prompt,
-      });
+      // Call the appropriate AI provider based on selection
+      console.log(`Calling ${provider} API to edit image...`, { prompt });
+      
+      let editResult;
+      
+      switch (provider) {
+        case "pollinations":
+          editResult = await editImageWithPollinations({
+            imageUrl: imageDataUrl,
+            prompt,
+          });
+          break;
+        
+        case "replicate":
+          if (!process.env.REPLICATE_API_TOKEN) {
+            return res.status(500).json({ 
+              error: "Replicate API token not configured",
+              message: "Please add REPLICATE_API_TOKEN to your Secrets to use Replicate.",
+            });
+          }
+          editResult = await editImageWithReplicate({
+            imageUrl: imageDataUrl,
+            prompt,
+          });
+          break;
+        
+        case "gemini":
+          if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ 
+              error: "Gemini API key not configured",
+              message: "Please add GEMINI_API_KEY to your Secrets to use Gemini.",
+            });
+          }
+          editResult = await editImageWithGemini({
+            imageUrl: imageDataUrl,
+            prompt,
+          });
+          break;
+        
+        default:
+          return res.status(400).json({ error: `Invalid provider: ${provider}` });
+      }
 
       // Convert base64 to buffer and upload to object storage
       const editedImageBuffer = Buffer.from(editResult.imageData, "base64");
