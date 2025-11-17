@@ -31,10 +31,10 @@ Preferred communication style: Simple, everyday language.
 
 **AI Integration (Multi-Provider):** 
 - **Pollinations AI** (Free): Text-to-image generation via public API, no API key required. Implemented in `server/pollinations.ts`.
-- **Replicate SDXL** (Professional): High-quality image generation/editing via Replicate API using Stable Diffusion XL model. Requires `REPLICATE_API_TOKEN`. Implemented in `server/replicate.ts`.
+- **Hugging Face** (Free): Image-to-image editing via Hugging Face Inference API using `timbrooks/instruct-pix2pix` model. Requires `HUGGINGFACE_API_KEY`. Implemented in `server/huggingface.ts`.
 - **Google Gemini** (Paid): Uses `gemini-1.5-flash` model via `@google/genai` SDK for image generation. Requires `GEMINI_API_KEY`. Implemented in `server/gemini.ts`.
 
-The `/api/edits` endpoint accepts a `provider` field ("pollinations" | "replicate" | "gemini") to select which AI service to use. Frontend includes dropdown selector in EditorPage for choosing provider. Defaults to Pollinations (free).
+The `/api/edits` endpoint accepts a `provider` field ("pollinations" | "huggingface" | "gemini") to select which AI service to use. Frontend includes dropdown selector in EditorPage for choosing provider. Defaults to Pollinations (free).
 
 **Database Service:** Neon PostgreSQL (serverless) using `DATABASE_URL` environment variable.
 **Development Tools:** Replit-specific plugins, ESBuild, Drizzle Kit for migrations.
