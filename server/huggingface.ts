@@ -1,4 +1,4 @@
-import { HfInference } from '@huggingface/inference';
+import { HfInference } from "@huggingface/inference";
 
 export interface ImageEditRequest {
   imageUrl: string;
@@ -12,7 +12,7 @@ export interface ImageEditResult {
 
 /**
  * Edit an image using Hugging Face Inference API (free tier)
- * Uses the stabilityai/stable-diffusion-xl-refiner-1.0 model for image-to-image editing
+ * Uses the nvidia/ChronoEdit-14B-Diffusers model via the fal-ai provider
  * Requires HUGGINGFACE_API_KEY in environment
  */
 export async function editImageWithHuggingFace(
@@ -22,22 +22,22 @@ export async function editImageWithHuggingFace(
 
   try {
     if (!request.imageUrl) {
-      throw new Error('Input image is required for Hugging Face image-to-image editing');
+      throw new Error("Input image is required for Hugging Face image-to-image editing");
     }
 
-    console.log("Generating image with Hugging Face:", { prompt: request.prompt });
+    console.log("Generating image with Hugging Face (ChronoEdit):", { prompt: request.prompt });
 
     let imageBlob: Blob;
 
     // Convert data URL to Blob
-    if (request.imageUrl.startsWith('data:')) {
+    if (request.imageUrl.startsWith("data:")) {
       const matches = request.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
       if (!matches) {
-        throw new Error('Invalid data URL format');
+        throw new Error("Invalid data URL format");
       }
       const mimeType = matches[1];
       const base64Data = matches[2];
-      const buffer = Buffer.from(base64Data, 'base64');
+      const buffer = Buffer.from(base64Data, "base64");
       imageBlob = new Blob([buffer], { type: mimeType });
     } else {
       // Fetch from URL
@@ -48,21 +48,25 @@ export async function editImageWithHuggingFace(
       imageBlob = await response.blob();
     }
 
-    // Call the image-to-image API using a supported model
-    // Using stabilityai/stable-diffusion-xl-refiner-1.0 which is available via Inference API
-    const resultBlob = await hf.imageToImage({
-      model: 'stabilityai/stable-diffusion-xl-refiner-1.0',
-      inputs: imageBlob,
-      parameters: {
-        prompt: request.prompt,
+    // Call the image-to-image API using the correct model and provider
+    const resultBlob = await hf.imageToImage(
+      {
+        model: "nvidia/ChronoEdit-14B-Diffusers",
+        inputs: imageBlob,
+        parameters: {
+          prompt: request.prompt,
+        },
       },
-    });
+      {
+        provider: "fal-ai",
+      }
+    );
 
     // Convert the result blob to base64
     const arrayBuffer = await resultBlob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const base64 = buffer.toString('base64');
-    const mimeType = resultBlob.type || 'image/jpeg';
+    const base64 = buffer.toString("base64");
+    const mimeType = resultBlob.type || "image/jpeg";
 
     return {
       imageData: base64,
