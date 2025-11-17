@@ -11,7 +11,6 @@ import { insertImageSchema, edits } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
-import { editImageWithPollinations } from "./pollinations";
 import { editImageWithHuggingFace } from "./huggingface";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -221,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageId: z.number(),
         prompt: z.string().min(1).max(500),
         baseEditId: z.number().optional(),
-        provider: z.enum(["pollinations", "huggingface", "gemini"]).default("pollinations"),
+        provider: z.enum(["huggingface", "gemini"]).default("huggingface"),
       });
       const { imageId, prompt, baseEditId, provider } = editRequestSchema.parse(req.body);
 
@@ -273,13 +272,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let editResult;
       
       switch (provider) {
-        case "pollinations":
-          editResult = await editImageWithPollinations({
-            imageUrl: imageDataUrl,
-            prompt,
-          });
-          break;
-        
         case "huggingface":
           if (!process.env.HUGGINGFACE_API_KEY) {
             return res.status(500).json({ 
