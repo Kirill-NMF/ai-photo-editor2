@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
 import { editImageWithPollinations } from "./pollinations";
-import { editImageWithReplicate } from "./replicate";
+import { editImageWithHuggingFace } from "./huggingface";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -221,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageId: z.number(),
         prompt: z.string().min(1).max(500),
         baseEditId: z.number().optional(),
-        provider: z.enum(["pollinations", "replicate", "gemini"]).default("pollinations"),
+        provider: z.enum(["pollinations", "huggingface", "gemini"]).default("pollinations"),
       });
       const { imageId, prompt, baseEditId, provider } = editRequestSchema.parse(req.body);
 
@@ -280,14 +280,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           break;
         
-        case "replicate":
-          if (!process.env.REPLICATE_API_TOKEN) {
+        case "huggingface":
+          if (!process.env.HUGGINGFACE_API_KEY) {
             return res.status(500).json({ 
-              error: "Replicate API token not configured",
-              message: "Please add REPLICATE_API_TOKEN to your Secrets to use Replicate.",
+              error: "Hugging Face API key not configured",
+              message: "Please add HUGGINGFACE_API_KEY to your Secrets to use Hugging Face.",
             });
           }
-          editResult = await editImageWithReplicate({
+          editResult = await editImageWithHuggingFace({
             imageUrl: imageDataUrl,
             prompt,
           });
