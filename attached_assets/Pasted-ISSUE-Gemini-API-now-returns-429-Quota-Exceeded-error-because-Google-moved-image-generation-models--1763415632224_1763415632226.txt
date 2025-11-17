@@ -1,0 +1,273 @@
+ISSUE: Gemini API now returns 429 Quota Exceeded error because Google moved image generation models to a paid tier. The application needs alternative image generation providers.
+
+GOAL: Integrate three image generation APIs (Pollinations, Replicate, Gemini) with a dropdown selector in the editor UI, allowing users to choose which provider to use for each generation request.
+
+STRATEGY: This will be a multi-step process:
+1. **Backend:** Create new API handler files for Pollinations and Replicate, update the existing Gemini handler, and modify the routes to support provider selection.
+2. **Frontend:** Add a dropdown menu in the editor UI to select the provider and pass the selection to the backend.
+3. **Environment:** Ensure the necessary API keys are configured in Secrets.
+
+Use the following reference code snippets as a guide.
+
+═══════════════════════════════════════════════════════════════════════
+REFERENCE CODE PROVIDED:
+═══════════════════════════════════════════════════════════════════════
+
+1. **Backend API Handler for Pollinations (`server/pollinations.ts`)**: NEW FILE
+2. **Backend API Handler for Replicate (`server/replicate.ts`)**: NEW FILE
+3. **Backend API Handler for Gemini (`server/gemini.ts`)**: UPDATE EXISTING
+4. **Backend Routes (`server/routes.ts`)**: UPDATE to add provider switching logic
+5. **Frontend Editor Component (`src/components/EditorPage.jsx`)**: UPDATE to add dropdown UI
+
+═══════════════════════════════════════════════════════════════════════
+IMPLEMENTATION INSTRUCTIONS:
+═══════════════════════════════════════════════════════════════════════
+
+**TASK 1: INSTALL DEPENDENCIES**
+
+1. In the Shell, run: `npm install replicate`
+
+**TASK 2: BACKEND API HANDLERS**
+
+1. **CREATE `server/pollinations.ts`**: This file will handle free image generation via Pollinations API. No API key required.
+
+2. **CREATE `server/replicate.ts`**: This file will handle professional image generation via Replicate API using the SDXL model. Requires `REPLICATE_API_TOKEN` from environment.
+
+3. **UPDATE `server/gemini.ts`**: 
+   - **DO NOT DELETE THIS FILE.**
+   - Ensure it uses the correct model name: `gemini-2.5-flash-image`.
+   - Keep all existing logic intact.
+
+**TASK 3: BACKEND ROUTING**
+
+1. **UPDATE `server/routes.ts`**:
+   - Modify the existing `/api/edit` endpoint (or wherever image generation is handled).
+   - Add a `provider` field to the request body (expected values: `pollinations`, `replicate`, `gemini`).
+   - Implement a `switch` statement to call the appropriate handler based on the provider.
+   - Import the new handler functions from `pollinations.ts` and `replicate.ts`.
+
+**TASK 4: FRONTEND UI**
+
+1. **UPDATE `src/components/EditorPage.jsx`** (or wherever the editor UI is located):
+   - Add a new state variable: `const [apiProvider, setApiProvider] = useState('pollinations');`
+   - Add a `<select>` dropdown menu next to the "Generate" button with three options:
+     - `P: Pollinations (Free)`
+     - `R: Replicate (Pro)`
+     - `G: Gemini (Paid)`
+   - Bind the dropdown's `value` to `apiProvider` and `onChange` to `setApiProvider`.
+   - When sending the generation request to the backend, include `provider: apiProvider` in the request body.
+
+**TASK 5: VERIFY SECRETS**
+
+1. Ensure the following secrets are configured in Replit:
+   - `GEMINI_API_KEY`: For Google Gemini API (already exists)
+   - `REPLICATE_API_TOKEN`: For Replicate API (user needs to add this)
+
+═══════════════════════════════════════════════════════════════════════
+CODE SNIPPET 1: `server/pollinations.ts` (NEW FILE)
+═══════════════════════════════════════════════════════════════════════
+
+```typescript
+import axios from 'axios';
+
+/**
+ * Generate an image using Pollinations AI (free, no API key required)
+ * Note: Pollinations doesn't support direct image-to-image editing.
+ * This function generates a new image based on the prompt.
+ */
+export async function editWithPollinations(prompt: string, imageUrl?: string): Promise<{ imageUrl: string }> {
+  try {
+    // Pollinations uses a simple GET request with the prompt in the URL
+    const encodedPrompt = encodeURIComponent(prompt);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}`;
+    
+    // The URL itself is the generated image
+    return { imageUrl: pollinationsUrl };
+  } catch (error ) {
+    throw new Error(`Pollinations API error: ${error.message}`);
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 2: server/replicate.ts (NEW FILE) ═══════════════════════════════════════════════════════════════════════
+
+TypeScript
+
+
+import Replicate from 'replicate';
+
+/**
+ * Generate/edit an image using Replicate API with SDXL model
+ * Requires REPLICATE_API_TOKEN in environment
+ */
+export async function editWithReplicate(prompt: string, imageUrl?: string): Promise<{ imageUrl: string }> {
+  const replicate = new Replicate({
+    auth: process.env.REPLICATE_API_TOKEN,
+  });
+
+  try {
+    let output;
+    
+    if (imageUrl) {
+      // Image-to-image editing
+      output = await replicate.run(
+        "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+        {
+          input: {
+            image: imageUrl,
+            prompt: prompt,
+            refine: "expert_ensemble_refiner",
+            scheduler: "K_EULER",
+            lora_scale: 0.6,
+            num_outputs: 1,
+            guidance_scale: 7.5,
+            apply_watermark: false,
+            high_noise_frac: 0.8,
+            negative_prompt: "",
+            prompt_strength: 0.8,
+            num_inference_steps: 25
+          }
+        }
+      );
+    } else {
+      // Text-to-image generation
+      output = await replicate.run(
+        "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+        {
+          input: {
+            prompt: prompt,
+            num_outputs: 1,
+            guidance_scale: 7.5,
+            num_inference_steps: 25
+          }
+        }
+      );
+    }
+
+    // Replicate returns an array of URLs
+    const resultUrl = Array.isArray(output) ? output[0] : output;
+    return { imageUrl: resultUrl };
+  } catch (error) {
+    throw new Error(`Replicate API error: ${error.message}`);
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 3: server/gemini.ts (UPDATE EXISTING FILE) ═══════════════════════════════════════════════════════════════════════
+
+TypeScript
+
+
+// Find the line where the model is initialized and update it to:
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-image" });
+
+// Keep all other existing logic intact
+// DO NOT DELETE THIS FILE
+
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 4: server/routes.ts (UPDATE EXISTING FILE) ═══════════════════════════════════════════════════════════════════════
+
+TypeScript
+
+
+// Add these imports at the top
+import { editWithPollinations } from './pollinations';
+import { editWithReplicate } from './replicate';
+import { editWithGemini } from './gemini'; // Ensure this import exists
+
+// Find your existing POST /api/edit endpoint and update it:
+app.post('/api/edit', async (req, res) => {
+  const { prompt, image, provider } = req.body;
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  if (!provider) {
+    return res.status(400).json({ error: 'Provider is required' });
+  }
+
+  try {
+    let result;
+    
+    switch (provider) {
+      case 'pollinations':
+        result = await editWithPollinations(prompt, image);
+        break;
+      
+      case 'replicate':
+        if (!process.env.REPLICATE_API_TOKEN) {
+          return res.status(500).json({ 
+            error: 'Replicate API token not configured. Please add REPLICATE_API_TOKEN to Secrets.' 
+          });
+        }
+        result = await editWithReplicate(prompt, image);
+        break;
+      
+      case 'gemini':
+        if (!process.env.GEMINI_API_KEY) {
+          return res.status(500).json({ 
+            error: 'Gemini API key not configured. Please add GEMINI_API_KEY to Secrets.' 
+          });
+        }
+        result = await editWithGemini(prompt, image);
+        break;
+      
+      default:
+        return res.status(400).json({ error: `Invalid provider: ${provider}` });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error(`Error with provider ${provider}:`, error);
+    res.status(500).json({ 
+      error: `Failed to edit image with ${provider}: ${error.message}` 
+    });
+  }
+});
+
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 5: src/components/EditorPage.jsx (UPDATE EXISTING FILE) ═══════════════════════════════════════════════════════════════════════
+
+JSX
+
+
+// Add this state near your other state variables (e.g., near useState for prompt)
+const [apiProvider, setApiProvider] = useState('pollinations');
+
+// Find your "Generate" button and add the dropdown next to it:
+<div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+  <select 
+    value={apiProvider} 
+    onChange={(e) => setApiProvider(e.target.value)}
+    style={{
+      padding: '10px 14px',
+      borderRadius: '6px',
+      border: '1px solid #ddd',
+      fontSize: '14px',
+      cursor: 'pointer',
+      backgroundColor: 'white'
+    }}
+  >
+    <option value="pollinations">P: Pollinations (Free)</option>
+    <option value="replicate">R: Replicate (Pro)</option>
+    <option value="gemini">G: Gemini (Paid)</option>
+  </select>
+  
+  <button onClick={handleGenerate} style={{ /* your existing button styles */ }}>
+    Generate
+  </button>
+</div>
+
+// Inside your handleGenerate function, update the fetch call to include provider:
+const response = await fetch('/api/edit', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    prompt: yourPromptVariable,
+    image: yourImageVariable,
+    provider: apiProvider  // <-- ADD THIS LINE
+  }),
+});
+
+
