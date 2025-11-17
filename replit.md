@@ -31,7 +31,7 @@ Preferred communication style: Simple, everyday language.
 
 **AI Integration (Multi-Provider):** 
 - **Pollinations AI** (Free): Text-to-image generation via public API, no API key required. Implemented in `server/pollinations.ts`.
-- **Hugging Face** (Free): Image-to-image editing via Hugging Face Inference API using `timbrooks/instruct-pix2pix` model. Requires `HUGGINGFACE_API_KEY`. Implemented in `server/huggingface.ts`.
+- **Hugging Face** (Free): Image-to-image editing via Hugging Face Inference API using `stabilityai/stable-diffusion-xl-refiner-1.0` model. Requires `HUGGINGFACE_API_KEY`. Implemented in `server/huggingface.ts`.
 - **Google Gemini** (Paid): Uses `gemini-1.5-flash` model via `@google/genai` SDK for image generation. Requires `GEMINI_API_KEY`. Implemented in `server/gemini.ts`.
 
 The `/api/edits` endpoint accepts a `provider` field ("pollinations" | "huggingface" | "gemini") to select which AI service to use. Frontend includes dropdown selector in EditorPage for choosing provider. Defaults to Pollinations (free).
