@@ -29,7 +29,13 @@ Preferred communication style: Simple, everyday language.
 
 ### External Dependencies
 
-**AI Integration:** Google Gemini 2.5 Flash Image Generation API (`@google/genai` SDK v0.21+) using the `gemini-2.0-flash-preview-image-generation` model. Utilizes `generateContent()` for multimodal input (image + text prompt) and handles various API errors.
+**AI Integration (Multi-Provider):** 
+- **Pollinations AI** (Free): Text-to-image generation via public API, no API key required. Implemented in `server/pollinations.ts`.
+- **Replicate SDXL** (Professional): High-quality image generation/editing via Replicate API using Stable Diffusion XL model. Requires `REPLICATE_API_TOKEN`. Implemented in `server/replicate.ts`.
+- **Google Gemini** (Paid): Uses `gemini-1.5-flash` model via `@google/genai` SDK for image generation. Requires `GEMINI_API_KEY`. Implemented in `server/gemini.ts`.
+
+The `/api/edits` endpoint accepts a `provider` field ("pollinations" | "replicate" | "gemini") to select which AI service to use. Frontend includes dropdown selector in EditorPage for choosing provider. Defaults to Pollinations (free).
+
 **Database Service:** Neon PostgreSQL (serverless) using `DATABASE_URL` environment variable.
 **Development Tools:** Replit-specific plugins, ESBuild, Drizzle Kit for migrations.
 **Rate Limiting & Validation:** Express-rate-limit for API throttling and Zod for request validation.
