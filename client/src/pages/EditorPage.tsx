@@ -34,7 +34,7 @@ export default function EditorPage() {
   const [currentBaseEditId, setCurrentBaseEditId] = useState<number | null>(null);
   const [overwriteLastSave, setOverwriteLastSave] = useState(false);
   const [promptText, setPromptText] = useState("");
-  const [apiProvider, setApiProvider] = useState<"pollinations" | "replicate" | "gemini">("pollinations");
+  const [apiProvider, setApiProvider] = useState<"pollinations" | "huggingface" | "gemini">("pollinations");
   const { toast } = useToast();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
@@ -606,7 +606,7 @@ export default function EditorPage() {
                 </label>
                 <Select 
                   value={apiProvider} 
-                  onValueChange={(value: "pollinations" | "replicate" | "gemini") => setApiProvider(value)}
+                  onValueChange={(value: "pollinations" | "huggingface" | "gemini") => setApiProvider(value)}
                   data-testid="select-provider"
                 >
                   <SelectTrigger className="w-48 h-9" data-testid="trigger-provider">
@@ -622,10 +622,10 @@ export default function EditorPage() {
                         <span className="text-xs text-muted-foreground">(Free)</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value="replicate" data-testid="option-replicate">
+                    <SelectItem value="huggingface" data-testid="option-huggingface">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">Replicate SDXL</span>
-                        <span className="text-xs text-muted-foreground">(Pro)</span>
+                        <span className="font-medium">Hugging Face</span>
+                        <span className="text-xs text-muted-foreground">(Free)</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="gemini" data-testid="option-gemini">
