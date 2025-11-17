@@ -1,0 +1,101 @@
+SSUE: The image generation provider dropdown includes "Pollinations", which is no longer needed. The default provider should be Hugging Face for a better user experience.
+
+GOAL: Remove the "Pollinations" option entirely and set "Hugging Face" as the default selection in the editor.
+
+STRATEGY: This involves two main changes: updating the frontend to remove the option and set the default, and cleaning up the backend to remove the corresponding logic and file.
+
+═══════════════════════════════════════════════════════════════════════ REFERENCE CODE PROVIDED: ═══════════════════════════════════════════════════════════════════════
+
+1.
+src/components/EditorPage.jsx: The updated frontend component with the modified dropdown menu and default state.
+
+2.
+server/routes.ts: The updated backend routes file with the Pollinations case removed.
+
+═══════════════════════════════════════════════════════════════════════ IMPLEMENTATION INSTRUCTIONS: ═══════════════════════════════════════════════════════════════════════
+
+TASK 1: Update Frontend (EditorPage.jsx)
+
+1.
+Open the file src/components/EditorPage.jsx.
+
+2.
+Find the useState for the provider. Change its default value from 'pollinations' to 'huggingface'.
+
+3.
+Find the <select> element for the provider dropdown.
+
+4.
+Remove the <option> for "P: Pollinations (Free)".
+
+Why? This makes Hugging Face the default choice and removes the unwanted option from the user interface.
+
+TASK 2: Update Backend (routes.ts)
+
+1.
+Open the file server/routes.ts.
+
+2.
+Find and DELETE the line import { editImageWithPollinations } from './pollinations';.
+
+3.
+Find the switch (provider) statement inside the POST /api/generate endpoint.
+
+4.
+Find and DELETE the entire case 'pollinations': block.
+
+Why? This removes the dead code path from the backend, making the application cleaner and preventing potential errors.
+
+TASK 3: Delete Unused File
+
+1.
+DELETE the file server/pollinations.ts.
+
+Why? The file is no longer used and should be removed to keep the project clean.
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 1: src/components/EditorPage.jsx (Relevant Changes) ═══════════════════════════════════════════════════════════════════════
+
+JavaScript
+
+
+// Find this line and change the default value
+const [provider, setProvider] = useState('huggingface'); // <-- SET DEFAULT TO 'huggingface'
+
+// ... later in the JSX ...
+
+<select value={provider} onChange={(e) => setProvider(e.target.value)} className="provider-select">
+  {/* REMOVED the Pollinations option */}
+  <option value="huggingface">H: Hugging Face (Free)</option>
+  <option value="gemini">G: Gemini (Paid)</option>
+</select>
+
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET 2: server/routes.ts (Relevant Changes) ═══════════════════════════════════════════════════════════════════════
+
+TypeScript
+
+
+// DELETE this import
+// import { editImageWithPollinations } from './pollinations';
+
+// ... inside POST /api/generate ...
+
+// Find this switch statement and remove the 'pollinations' case
+switch (provider) {
+  // DELETE THIS BLOCK
+  /*
+  case 'pollinations':
+    result = await editImageWithPollinations({ imageUrl, prompt });
+    break;
+  */
+  case 'huggingface':
+    result = await editImageWithHuggingFace({ imageUrl, prompt });
+    break;
+  case 'gemini':
+    result = await editImageWithGemini({ imageUrl, prompt });
+    break;
+  default:
+    throw new Error(`Unsupported provider: ${provider}`);
+}
+
+
