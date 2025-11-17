@@ -12,7 +12,7 @@ export interface ImageEditResult {
 
 /**
  * Edit an image using Hugging Face Inference API (free tier)
- * Uses the instruct-pix2pix model for image-to-image editing
+ * Uses the stabilityai/stable-diffusion-xl-refiner-1.0 model for image-to-image editing
  * Requires HUGGINGFACE_API_KEY in environment
  */
 export async function editImageWithHuggingFace(
@@ -48,9 +48,10 @@ export async function editImageWithHuggingFace(
       imageBlob = await response.blob();
     }
 
-    // Call the image-to-image API using instruct-pix2pix model
+    // Call the image-to-image API using a supported model
+    // Using stabilityai/stable-diffusion-xl-refiner-1.0 which is available via Inference API
     const resultBlob = await hf.imageToImage({
-      model: 'timbrooks/instruct-pix2pix',
+      model: 'stabilityai/stable-diffusion-xl-refiner-1.0',
       inputs: imageBlob,
       parameters: {
         prompt: request.prompt,
