@@ -1,7 +1,4 @@
-import fetch from 'node-fetch';
-
-// The NEW router endpoint for all Hugging Face models
-const API_URL = 'https://router.huggingface.co/hf-inference';
+import { HfInference } from "@huggingface/inference";
 
 export interface ImageEditRequest {
   imageUrl: string;
@@ -15,99 +12,65 @@ export interface ImageEditResult {
 
 /**
  * Edit an image using Hugging Face Inference API (free tier)
- * Uses the new router endpoint with model specified in request body
- * Supports both data URLs (base64) and public URLs
+ * Uses Qwen/Qwen-Image-Edit model - specialized for instruction-based editing
+ * Popular, open license, not gated - works for all users
  */
 export async function editImageWithHuggingFace(
   request: ImageEditRequest
 ): Promise<ImageEditResult> {
+  const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
   try {
     if (!request.imageUrl) {
       throw new Error("Input image is required for Hugging Face image-to-image editing");
     }
 
-    console.log("Generating image with Hugging Face (ChronoEdit) via router API:", { prompt: request.prompt });
+    console.log("Generating image with Hugging Face (Qwen/Qwen-Image-Edit):", { prompt: request.prompt });
 
-    let imageBase64: string;
-    let sourceMimeType: string;
+    let imageBlob: Blob;
 
-    // Handle data URL (base64)
+    // Convert data URL to Blob
     if (request.imageUrl.startsWith("data:")) {
       const matches = request.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
       if (!matches) {
         throw new Error("Invalid data URL format");
       }
-      sourceMimeType = matches[1];
-      imageBase64 = matches[2];
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, "base64");
+      imageBlob = new Blob([buffer], { type: mimeType });
     } else {
-      // Fetch from public URL and convert to base64
+      // Fetch from URL
       const response = await fetch(request.imageUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch image from URL: ${request.imageUrl}`);
       }
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      imageBase64 = buffer.toString("base64");
-      sourceMimeType = response.headers.get("content-type") || "image/jpeg";
+      imageBlob = await response.blob();
     }
 
-    // Make authenticated API call with new router endpoint format
-    const apiResponse = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-        'Content-Type': 'application/json',
+    // Call the Hugging Face API with the Qwen/Qwen-Image-Edit model
+    const resultBlob = await hf.imageToImage({
+      model: "Qwen/Qwen-Image-Edit",
+      data: imageBlob,
+      parameters: {
+        prompt: request.prompt,
       },
-      body: JSON.stringify({
-        model: 'nvidia/ChronoEdit-14B-Diffusers',
-        inputs: {
-          prompt: request.prompt,
-          image: imageBase64,
-        },
-      }),
     });
 
-    if (!apiResponse.ok) {
-      const errorBody = await apiResponse.text();
-      console.error(`Hugging Face API responded with status ${apiResponse.status}:`, errorBody);
-      throw new Error(`API request failed with status ${apiResponse.status}: ${errorBody}`);
-    }
+    // Convert the result blob to base64
+    const arrayBuffer = await resultBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString("base64");
+    const mimeType = resultBlob.type || "image/jpeg";
 
-    const result = await apiResponse.json() as any;
-
-    // Handle response - can be image_url or base64 image
-    if (result && result.image_url) {
-      // If API returns a URL, fetch it and convert to base64
-      const imageResponse = await fetch(result.image_url);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch result image from URL: ${result.image_url}`);
-      }
-      const imageArrayBuffer = await imageResponse.arrayBuffer();
-      const imageBuffer = Buffer.from(imageArrayBuffer);
-      const resultBase64 = imageBuffer.toString("base64");
-      const resultMimeType = imageResponse.headers.get("content-type") || "image/jpeg";
-
-      console.log('Successfully received edited image from Hugging Face.');
-      return {
-        imageData: resultBase64,
-        mimeType: resultMimeType,
-      };
-    } else if (result && result.image) {
-      // If API returns base64 directly
-      console.log('Successfully received edited image from Hugging Face.');
-      return {
-        imageData: result.image,
-        mimeType: sourceMimeType,
-      };
-    } else if (result && result.error) {
-      console.error('Hugging Face API returned an error:', result.error);
-      throw new Error(`Hugging Face API error: ${result.error}`);
-    } else {
-      console.error('Unexpected response format from Hugging Face:', result);
-      throw new Error('Unexpected response format from Hugging Face API.');
-    }
+    console.log("Successfully received edited image from Hugging Face");
+    
+    return {
+      imageData: base64,
+      mimeType,
+    };
   } catch (error: any) {
-    console.error('Error in editImageWithHuggingFace:', error);
+    console.error("Hugging Face API error:", error);
     throw new Error(`Failed to edit image with Hugging Face: ${error.message}`);
   }
 }

@@ -1,0 +1,94 @@
+ISSUE: The application requires a free, reliable, and high-quality image-editing model from Hugging Face that works for all users without special permissions. Previous models were either gated, required complex provider setups, or were not specialized for instruction-based editing.
+
+GOAL: Implement the best-suited model for the task. The chosen model is Qwen/Qwen-Image-Edit, which is specifically designed for instruction-based image editing, is highly popular, has an open license, and is not gated.
+
+STRATEGY: We will overwrite server/huggingface.ts one last time. The code will use the @huggingface/inference SDK and call the imageToImage method with the Qwen/Qwen-Image-Edit model. This approach is the most robust as it uses the official SDK with a model that is perfectly aligned with the project's requirements.
+
+═══════════════════════════════════════════════════════════════════════ IMPLEMENTATION INSTRUCTIONS: ═══════════════════════════════════════════════════════════════════════
+
+TASK 1: Ensure the SDK is Installed
+
+1.
+Open the Shell in your Replit sidebar.
+
+2.
+Run the command: pnpm install @huggingface/inference (if you previously removed it).
+
+TASK 2: Overwrite the server/huggingface.ts File
+
+1.
+DELETE all existing code in server/huggingface.ts.
+
+2.
+COPY and PASTE the complete code from the snippet below.
+
+Why this model?
+
+•
+Specialized for Editing: Like instruct-pix2pix, it's trained to follow text instructions (e.g., "add a hat").
+
+•
+Extremely Popular: Over 300,000 monthly downloads, indicating reliability.
+
+•
+Not Gated & Open License: It works for everyone without requiring them to log in and accept terms, and its Apache 2.0 license is permissive.
+
+•
+Proven to Work: The interactive widget on its model page confirms it works with the standard Inference API.
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET: server/huggingface.ts (Final Recommended Code) ═══════════════════════════════════════════════════════════════════════
+
+TypeScript
+
+
+import { HfInference } from "@huggingface/inference";
+import fetch from "node-fetch";
+
+// Initialize the Inference Client with your token from Replit Secrets
+const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
+interface HuggingFaceParams {
+  imageUrl: string;
+  prompt: string;
+}
+
+export async function editImageWithHuggingFace({ imageUrl, prompt }: HuggingFaceParams): Promise<{ imageUrl: string }> {
+  console.log("Attempting to edit image with Qwen/Qwen-Image-Edit model...");
+
+  try {
+    // 1. Fetch the image from the URL and get it as a Blob
+    console.log(`Fetching image from URL: ${imageUrl}`);
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image from URL. Status: ${imageResponse.status}`);
+    }
+    const imageBlob = await imageResponse.blob();
+    console.log("Successfully fetched image and converted to Blob.");
+
+    // 2. Call the imageToImage method with the Blob and the chosen model
+    const resultBlob = await hf.imageToImage({
+      // The best model for our task: instruction-based, popular, and not gated.
+      model: "Qwen/Qwen-Image-Edit",
+      data: imageBlob,
+      parameters: {
+        prompt: prompt,
+      },
+    });
+    console.log("Successfully received edited image Blob from Hugging Face.");
+
+    // 3. Convert the resulting Blob to a Base64 Data URL to send to the client
+    const arrayBuffer = await resultBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString("base64");
+    const mimeType = resultBlob.type || "image/jpeg";
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+
+    return { imageUrl: dataUrl };
+
+  } catch (error: any) {
+    console.error("An exception occurred in editImageWithHuggingFace:", error);
+    throw new Error(`Hugging Face SDK Error: ${error.message}`);
+  }
+}
+
+
