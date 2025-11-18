@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
-// The full, direct URL to the specific model and provider endpoint
-const API_URL = 'https://api-inference.huggingface.co/models/nvidia/ChronoEdit-14B-Diffusers/fal-ai/chrono-edit';
+// The NEW router endpoint for all Hugging Face models
+const API_URL = 'https://router.huggingface.co/hf-inference';
 
 export interface ImageEditRequest {
   imageUrl: string;
@@ -15,7 +15,7 @@ export interface ImageEditResult {
 
 /**
  * Edit an image using Hugging Face Inference API (free tier)
- * Uses direct fetch to avoid unauthenticated SDK discovery requests
+ * Uses the new router endpoint with model specified in request body
  * Supports both data URLs (base64) and public URLs
  */
 export async function editImageWithHuggingFace(
@@ -26,7 +26,7 @@ export async function editImageWithHuggingFace(
       throw new Error("Input image is required for Hugging Face image-to-image editing");
     }
 
-    console.log("Generating image with Hugging Face (ChronoEdit) via direct API:", { prompt: request.prompt });
+    console.log("Generating image with Hugging Face (ChronoEdit) via router API:", { prompt: request.prompt });
 
     let imageBase64: string;
     let sourceMimeType: string;
@@ -51,7 +51,7 @@ export async function editImageWithHuggingFace(
       sourceMimeType = response.headers.get("content-type") || "image/jpeg";
     }
 
-    // Make direct authenticated API call
+    // Make authenticated API call with new router endpoint format
     const apiResponse = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -59,6 +59,7 @@ export async function editImageWithHuggingFace(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        model: 'nvidia/ChronoEdit-14B-Diffusers',
         inputs: {
           prompt: request.prompt,
           image: imageBase64,
@@ -93,6 +94,7 @@ export async function editImageWithHuggingFace(
       };
     } else if (result && result.image) {
       // If API returns base64 directly
+      console.log('Successfully received edited image from Hugging Face.');
       return {
         imageData: result.image,
         mimeType: sourceMimeType,
