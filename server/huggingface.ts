@@ -51,7 +51,7 @@ export async function editImageWithHuggingFace(
     // Call the Hugging Face API with the Qwen/Qwen-Image-Edit model
     const resultBlob = await hf.imageToImage({
       model: "Qwen/Qwen-Image-Edit",
-      data: imageBlob,
+      inputs: imageBlob,
       parameters: {
         prompt: request.prompt,
       },
