@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const genAI = new GoogleGenAI({ apiKey: "AIzaSyCm6ETtt7xjS2R0x5p5HJZE3Eecl5lpZS8" });
 
 export interface ImageEditRequest {
   imageUrl: string;
