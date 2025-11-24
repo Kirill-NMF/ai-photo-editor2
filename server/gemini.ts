@@ -14,7 +14,7 @@ export interface ImageEditResult {
 
 /**
  * Edit an image using Gemini 2.0 Flash Image Generation model
- * Uses generateContent with multimodal approach 1
+ * Uses generateContent with multimodal approach 12
  */
 export async function editImageWithGemini(
   request: ImageEditRequest
