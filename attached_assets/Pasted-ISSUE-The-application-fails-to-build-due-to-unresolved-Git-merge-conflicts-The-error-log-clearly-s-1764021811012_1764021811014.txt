@@ -1,0 +1,52 @@
+ISSUE: The application fails to build due to unresolved Git merge conflicts. The error log clearly shows ERROR: Unexpected "<<" in server/gemini.ts, which is a direct result of conflict markers (<<<<<<<, =======, >>>>>>>) being present in the source code. This indicates a failed merge from new_origin/main.
+
+GOAL: Automatically find and resolve all Git merge conflicts in the project. The resolution strategy is to keep the current working version (HEAD) which contains the Gemini API integration, and discard the old version from new_origin/main which contains irrelevant DeepAI code.
+
+STRATEGY: The process involves three steps: first, identify all files with conflict markers. Second, for each file, programmatically edit it to remove the markers and the unwanted code block. Third, verify that the application builds and runs successfully after the fix.
+
+═══════════════════════════════════════════════════════════════════════ IMPLEMENTATION INSTRUCTIONS: ═══════════════════════════════════════════════════════════════════════
+
+TASK 1: Find All Conflicted Files
+
+1.
+Open the Shell.
+
+2.
+Run the following command to list all files containing merge conflict markers:
+
+3.
+Keep this list of files for the next steps.
+
+TASK 2: Resolve Conflict in server/gemini.ts
+
+1.
+Open the file server/gemini.ts.
+
+2.
+Identify the conflict block. It will look like this:
+
+3.
+DELETE the conflict markers: <<<<<<< HEAD, =======, and >>>>>>> new_origin/main.
+
+4.
+DELETE the entire block of code that was between ======= and >>>>>>> new_origin/main.
+
+5.
+KEEP only the clean code that was in the HEAD block.
+
+TASK 3: Resolve Conflicts in Other Files
+
+1.
+Review the list of files from Task 1.
+
+2.
+For each remaining file, repeat the exact same process as in Task 2: open the file, find the conflict, and edit it to keep only the code from the HEAD section.
+
+TASK 4: Verify the Fix
+
+1.
+After editing all conflicted files, run the application's start command:
+
+2.
+Confirm that the Transform failed error is gone and the server starts successfully.
+
