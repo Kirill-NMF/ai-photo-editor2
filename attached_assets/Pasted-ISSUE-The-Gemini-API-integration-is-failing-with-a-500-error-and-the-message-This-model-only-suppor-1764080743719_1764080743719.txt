@@ -1,0 +1,121 @@
+ISSUE: The Gemini API integration is failing with a 500 error and the message This model only supports text output. This indicates that the wrong Gemini model is being used for image editing, or the image input is not correctly formatted.
+
+GOAL: Fix the Gemini API integration in server/gemini.ts by ensuring the correct image-capable model (gemini-2.5-flash-image) is used and that the image data is correctly prepared for the API call.
+
+STRATEGY: We will overwrite server/gemini.ts. The new code will:
+
+1.
+Use the correct model: gemini-2.5-flash-image.
+
+2.
+Fetch the image from the provided URL.
+
+3.
+Convert the image to a Base64 string, which is the required format for the Gemini API's Part object.
+
+4.
+Construct the contents array with the image part and the text prompt.
+
+5.
+Call the API and return the result.
+
+═══════════════════════════════════════════════════════════════════════ IMPLEMENTATION INSTRUCTIONS: ═══════════════════════════════════════════════════════════════════════
+
+TASK 1: Overwrite the server/gemini.ts File
+
+1.
+DELETE all existing code in server/gemini.ts.
+
+2.
+COPY and PASTE the complete code from the snippet below into the file.
+
+Why this model?
+
+•
+gemini-2.5-flash-image is the official model for image generation and editing, as per Google's documentation.
+
+•
+The previous error This model only supports text output confirms that a text-only model was incorrectly used.
+
+═══════════════════════════════════════════════════════════════════════ CODE SNIPPET: server/gemini.ts (Full Replacement Code) ═══════════════════════════════════════════════════════════════════════
+
+TypeScript
+
+
+import { GoogleGenAI, Part } from "@google/genai";
+import fetch from "node-fetch";
+
+// Initialize the GoogleGenAI client
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+interface GeminiParams {
+  imageUrl: string;
+  prompt: string;
+}
+
+/**
+ * Converts a remote image URL to a GoogleGenAI.Part object (Base64 encoded).
+ * @param url The remote URL of the image.
+ * @returns A Promise that resolves to a Part object.
+ */
+async function urlToGenerativePart(url: string): Promise<Part> {
+  console.log(`Fetching image from URL: ${url}`);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image from URL. Status: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "image/jpeg";
+  const buffer = await response.buffer();
+  const base64Data = buffer.toString("base64");
+
+  return {
+    inlineData: {
+      data: base64Data,
+      mimeType: contentType,
+    },
+  };
+}
+
+export async function editImageWithGemini({ imageUrl, prompt }: GeminiParams): Promise<{ imageUrl: string }> {
+  console.log("Attempting to edit image with Gemini API...");
+
+  try {
+    // 1. Convert the image URL to a Generative Part (Base64)
+    const imagePart = await urlToGenerativePart(imageUrl);
+
+    // 2. Call the API with the correct model and contents
+    const response = await ai.models.generateContent({
+      // Use the official image-capable model
+      model: "gemini-2.5-flash-image",
+      contents: [
+        imagePart,
+        { text: prompt },
+      ],
+    });
+
+    console.log("Successfully received response from Gemini.");
+
+    // 3. Extract the image from the response
+    const imagePartFromResponse = response.candidates?.[0]?.content?.parts?.find(
+      (part) => part.inlineData?.mimeType.startsWith("image/")
+    );
+
+    if (!imagePartFromResponse || !imagePartFromResponse.inlineData) {
+      throw new Error("Gemini did not return an image in the response.");
+    }
+
+    // 4. Return the image as a Data URL
+    const { data, mimeType } = imagePartFromResponse.inlineData;
+    const dataUrl = `data:${mimeType};base64,${data}`;
+
+    return { imageUrl: dataUrl };
+
+  } catch (error: any) {
+    console.error("An exception occurred in editImageWithGemini:", error);
+    // Send a more detailed error message back to the client
+    throw new Error(`Gemini API Error: ${error.message}`);
+  }
+}
+
+
