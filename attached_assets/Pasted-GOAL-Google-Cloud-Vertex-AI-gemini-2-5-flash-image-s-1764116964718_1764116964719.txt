@@ -1,0 +1,151 @@
+GOAL
+
+Интегрировать Google Cloud Vertex AI для использования модели gemini-2.5-flash-image в файле server/gemini.ts, используя прямой REST API вызов с API ключом.
+
+STRATEGY
+
+1.
+Удалить ненужную зависимость: @google-cloud/vertexai.
+
+2.
+Полностью переписать server/gemini.ts:
+
+•
+Использовать node-fetch для прямого REST API вызова.
+
+•
+Формировать правильный URL с project_id и api_key.
+
+•
+Реализовать функцию editImage, которая:
+
+•
+Скачивает изображение по URL.
+
+•
+Конвертирует его в Base64.
+
+•
+Формирует правильное тело запроса для generateContent.
+
+•
+Вызывает Vertex AI REST API.
+
+•
+Извлекает результат из ответа.
+
+•
+Возвращает результат в формате Data URL.
+
+
+
+
+
+3.
+Добавить логирование для отладки.
+
+IMPLEMENTATION INSTRUCTIONS
+
+1. Remove Unused Dependency
+
+Run this command in the Shell:
+
+Bash
+
+
+pnpm remove @google-cloud/vertexai
+
+
+2. Update server/gemini.ts
+
+Replace the entire content of server/gemini.ts with the following code:
+
+TypeScript
+
+
+import fetch from 'node-fetch';
+
+const project = process.env.GOOGLE_CLOUD_PROJECT;
+const location = 'us-central1';
+const apiKey = process.env.GOOGLE_CLOUD_API_KEY;
+const model = 'gemini-2.5-flash-image';
+
+// Функция для редактирования изображения
+async function editImage(imageUrl: string, prompt: string): Promise<string> {
+  console.log(`[Gemini REST] Starting image edit for: ${imageUrl}`);
+  
+  if (!project || !apiKey) {
+    throw new Error('GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_API_KEY is not set in Replit Secrets');
+  }
+
+  try {
+    // 1. Скачиваем изображение
+    console.log('[Gemini REST] Downloading image...');
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    console.log('[Gemini REST] Image downloaded and converted to base64.');
+
+    // 2. Формируем URL и тело запроса
+    const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent?key=${apiKey}`;
+
+    const requestBody = {
+      contents: [{
+        role: 'user',
+        parts: [
+          { 
+            inlineData: { 
+              mimeType: 'image/jpeg', 
+              data: base64 
+            } 
+          },
+          { text: prompt }
+        ]
+      }],
+    };
+
+    // 3. Вызываем Vertex AI REST API
+    console.log('[Gemini REST] Sending request to Vertex AI...' );
+    const apiResponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      throw new Error(`Vertex AI API request failed with status ${apiResponse.status}: ${errorText}`);
+    }
+
+    const result = await apiResponse.json() as any;
+
+    // 4. Извлекаем результат
+    if (!result.candidates || result.candidates.length === 0) {
+      throw new Error('No candidates returned from Vertex AI');
+    }
+
+    const imagePart = result.candidates[0].content.parts.find((part: any) => part.inlineData);
+
+    if (imagePart && imagePart.inlineData) {
+      const b64 = imagePart.inlineData.data;
+      const mimeType = imagePart.inlineData.mimeType;
+      console.log(`[Gemini REST] Image generated successfully! Mime type: ${mimeType}`);
+      return `data:${mimeType};base64,${b64}`;
+    }
+
+    throw new Error('No image data found in Vertex AI response');
+
+  } catch (error) {
+    console.error('[Gemini REST] API call failed:', error);
+    throw error;
+  }
+}
+
+export { editImage };
+
+
