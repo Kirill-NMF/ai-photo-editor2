@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.3",
+    "@google-cloud/vertexai": "^1.10.0",
     "@google/genai": "^1.29.0",
     "@hookform/resolvers": "^3.10.0",
     "@huggingface/inference": "^4.13.3",

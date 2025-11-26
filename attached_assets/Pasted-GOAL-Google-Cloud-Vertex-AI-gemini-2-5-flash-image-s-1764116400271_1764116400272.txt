@@ -1,0 +1,172 @@
+GOAL
+
+Интегрировать Google Cloud Vertex AI для использования модели gemini-2.5-flash-image в файле server/gemini.ts, используя API ключ вместо сложной аутентификации.
+
+STRATEGY
+
+1.
+Установить новую зависимость: @google-cloud/vertexai.
+
+2.
+Полностью переписать server/gemini.ts:
+
+•
+Использовать @google-cloud/vertexai для инициализации клиента.
+
+•
+Получать project_id и api_key из переменных окружения.
+
+•
+Аутентифицироваться через API ключ.
+
+•
+Реализовать функцию editImage, которая:
+
+•
+Скачивает изображение по URL.
+
+•
+Конвертирует его в Base64.
+
+•
+Вызывает gemini-2.5-flash-image с правильными параметрами.
+
+•
+Возвращает результат в формате Data URL.
+
+
+
+
+
+3.
+Добавить логирование для отладки.
+
+IMPLEMENTATION INSTRUCTIONS
+
+1. Install Dependencies
+
+Run this command in the Shell:
+
+Bash
+
+
+pnpm install @google-cloud/vertexai
+
+
+2. Add Environment Variables to Replit Secrets
+
+1.
+Go to Secrets tab in Replit.
+
+2.
+Add a new secret:
+
+•
+Key: GOOGLE_CLOUD_API_KEY
+
+•
+Value: (your Google Cloud API Key)
+
+
+
+3.
+Add another secret:
+
+•
+Key: GOOGLE_CLOUD_PROJECT
+
+•
+Value: (your Google Cloud Project ID)
+
+
+
+3. Update server/gemini.ts
+
+Replace the entire content of server/gemini.ts with the following code:
+
+TypeScript
+
+
+import { VertexAI } from '@google-cloud/vertexai';
+
+const project = process.env.GOOGLE_CLOUD_PROJECT;
+const location = 'us-central1';
+const apiKey = process.env.GOOGLE_CLOUD_API_KEY;
+
+// Инициализация Vertex AI клиента с API ключом
+const vertexAI = new VertexAI({ 
+  project: project || '', 
+  location, 
+  googleAuthOptions: { 
+    apiKey 
+  }
+});
+
+const model = 'gemini-2.5-flash-image';
+
+// Функция для редактирования изображения
+async function editImage(imageUrl: string, prompt: string): Promise<string> {
+  console.log(`[Gemini] Starting image edit for: ${imageUrl}`);
+  
+  if (!project || !apiKey) {
+    throw new Error('GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_API_KEY is not set in Replit Secrets');
+  }
+
+  try {
+    // 1. Скачиваем изображение
+    console.log('[Gemini] Downloading image...');
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    console.log('[Gemini] Image downloaded and converted to base64.');
+
+    // 2. Вызываем Vertex AI API
+    const generativeModel = vertexAI.getGenerativeModel({ model });
+
+    const request = {
+      contents: [{
+        role: 'user',
+        parts: [
+          { 
+            inlineData: { 
+              mimeType: 'image/jpeg', 
+              data: base64 
+            } 
+          },
+          { text: prompt }
+        ]
+      }],
+    };
+
+    console.log('[Gemini] Sending request to Vertex AI...');
+    const result = await generativeModel.generateContent(request);
+    
+    // 3. Извлекаем результат
+    const contentResponse = result.response;
+    if (!contentResponse || !contentResponse.candidates || contentResponse.candidates.length === 0) {
+      throw new Error('No candidates returned from Vertex AI');
+    }
+
+    const imagePart = contentResponse.candidates[0].content.parts.find(part => part.inlineData);
+
+    if (imagePart && imagePart.inlineData) {
+      const b64 = imagePart.inlineData.data;
+      const mimeType = imagePart.inlineData.mimeType;
+      console.log(`[Gemini] Image generated successfully! Mime type: ${mimeType}`);
+      return `data:${mimeType};base64,${b64}`;
+    }
+
+    throw new Error('No image data found in Vertex AI response');
+
+  } catch (error) {
+    console.error('[Gemini] API call failed:', error);
+    throw error;
+  }
+}
+
+export { editImage };
+
+
