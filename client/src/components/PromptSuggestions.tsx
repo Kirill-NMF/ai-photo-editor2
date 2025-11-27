@@ -1,6 +1,5 @@
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import SuggestionCard from "./SuggestionCard";
-import { Lightbulb, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface Suggestion {
   id: number;
@@ -21,19 +20,16 @@ export default function PromptSuggestions({ suggestions, onSelect }: PromptSugge
         <h3 className="text-sm font-semibold">Quick Suggestions</h3>
       </div>
       
-      <ScrollArea className="w-full">
-        <div className="flex gap-3 pb-2">
-          {suggestions.map((suggestion) => (
-            <SuggestionCard
-              key={suggestion.id}
-              prompt={suggestion.prompt}
-              category={suggestion.category}
-              onClick={() => onSelect(suggestion.prompt)}
-            />
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
+        {suggestions.map((suggestion) => (
+          <SuggestionCard
+            key={suggestion.id}
+            prompt={suggestion.prompt}
+            category={suggestion.category}
+            onClick={() => onSelect(suggestion.prompt)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

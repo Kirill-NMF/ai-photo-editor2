@@ -17,11 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Upload as UploadIcon, Sparkles } from "lucide-react";
+import { ArrowLeft, Upload as UploadIcon, Sparkles, Menu } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Image, Edit } from "@shared/schema";
 import { EditorCache, debounce } from "@/utils/editorCache";
+import MobileBottomSheet from "@/components/MobileBottomSheet";
+import MobileSideDrawer from "@/components/MobileSideDrawer";
 
 type EditWithUI = Edit & { isSaved: boolean };
 
@@ -38,6 +40,11 @@ export default function EditorPage() {
   const { toast } = useToast();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
+  
+  // Mobile state management
+  const [isMobile, setIsMobile] = useState(false);
+  const [showQuickSuggestions, setShowQuickSuggestions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   
   const hasAttemptedRestore = useRef(false);
   const currentRestoreToken = useRef<number>(0);
@@ -56,6 +63,18 @@ export default function EditorPage() {
     overwriteLastSaveRef.current = overwriteLastSave;
     promptTextRef.current = promptText;
   }, [uploadedImage, edits, currentBaseEditId, overwriteLastSave, promptText]);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const mockSuggestions = [
     { id: 1, prompt: "Make the sky more dramatic with sunset colors", category: "lighting" },
@@ -527,7 +546,131 @@ export default function EditorPage() {
     );
   }
 
-  return (
+  return isMobile ? (
+    // MOBILE LAYOUT
+    <div className="flex flex-col h-screen bg-background">
+      {/* Mobile Header with Hamburger Menu */}
+      <div className="flex justify-between items-center p-4 border-b bg-background sticky top-0 z-10">
+        <h1 className="text-lg font-bold">Photo Editor</h1>
+        <button
+          onClick={() => setShowMenu(true)}
+          className="p-2 hover-elevate active-elevate-2 rounded-lg"
+          aria-label="Open menu"
+          data-testid="button-menu-mobile"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Image Preview */}
+        {isProcessing && <ProcessingIndicator progress={65} />}
+        
+        <div className="mb-4">
+          {showComparison ? (
+            (() => {
+              const baseEdit = currentBaseEditId !== null 
+                ? edits.find(e => e.id === currentBaseEditId)
+                : null;
+              const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
+              const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
+              
+              return (
+                <div className="rounded-lg overflow-hidden shadow-lg">
+                  <BeforeAfterSlider
+                    beforeImage={baseImageUrl}
+                    afterImage={uploadedImage.currentUrl}
+                    beforeLabel={isUsingBase ? "Base" : "Original"}
+                    afterLabel="Edited"
+                    afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
+                  />
+                </div>
+              );
+            })()
+          ) : (
+            <img
+              src={uploadedImage.currentUrl}
+              alt="Editor preview"
+              className="w-full h-auto rounded-lg shadow-lg"
+            />
+          )}
+        </div>
+
+        {/* Provider Dropdown */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">AI Provider</label>
+          <Select 
+            value={apiProvider} 
+            onValueChange={(value: "huggingface" | "gemini") => setApiProvider(value)}
+            data-testid="select-provider-mobile"
+          >
+            <SelectTrigger className="w-full" data-testid="trigger-provider-mobile">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="huggingface" data-testid="option-huggingface-mobile">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Hugging Face</span>
+                  <span className="text-xs text-muted-foreground">(Free)</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="gemini" data-testid="option-gemini-mobile">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Gemini</span>
+                  <span className="text-xs text-muted-foreground">(Paid)</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Prompt Field */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Prompt</label>
+          <PromptInput 
+            value={promptText}
+            onChange={handlePromptChange}
+            onSubmit={handlePromptSubmit} 
+            isProcessing={isProcessing} 
+          />
+        </div>
+
+        {/* Quick Suggestions Button */}
+        <button
+          onClick={() => setShowQuickSuggestions(true)}
+          className="w-full py-3 border-2 border-primary text-primary rounded-lg font-semibold hover-elevate active-elevate-2 transition-colors flex items-center justify-center gap-2"
+          data-testid="button-show-suggestions"
+        >
+          <Sparkles className="h-4 w-4" />
+          Quick Suggestions
+        </button>
+      </div>
+
+      {/* Bottom Sheets and Drawers */}
+      {showQuickSuggestions && (
+        <MobileBottomSheet
+          onClose={() => setShowQuickSuggestions(false)}
+          suggestions={mockSuggestions}
+          onSelect={(prompt) => {
+            handleSuggestionSelect(prompt);
+            setShowQuickSuggestions(false);
+          }}
+        />
+      )}
+
+      {showMenu && (
+        <MobileSideDrawer
+          onClose={() => setShowMenu(false)}
+          historyItems={historyItems}
+          onUploadNew={handleReset}
+          onNewProject={handleNewProject}
+          onUseAsBase={handleUseAsBase}
+        />
+      )}
+    </div>
+  ) : (
+    // DESKTOP LAYOUT
     <div className="flex h-[calc(100vh-4rem)] bg-background">
       {/* Left Sidebar - Edit History */}
       <div className="w-80 border-r flex-shrink-0">

@@ -11,12 +11,20 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function GalleryPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
   // Fetch user's projects from the database
   const { data: projects = [], isLoading } = useQuery<(Project & { originalImage?: Image })[]>({
     queryKey: ['/api/projects'],
   });
+
+  // Pagination
+  const itemsPerPage = 9;
+  const totalPages = Math.ceil(projects.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProjects = projects.slice(startIndex, endIndex);
 
   // TEMPORARY: Migration mutation to create projects for existing images
   const migrateMutation = useMutation({
@@ -99,15 +107,76 @@ export default function GalleryPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onOpenProject={() => setSelectedProjectId(project.id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-3 md:grid-cols-2 gap-4 mb-8">
+              {currentProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onOpenProject={() => setSelectedProjectId(project.id)}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-8">
+                {/* Previous Button */}
+                <Button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  className="px-4"
+                  data-testid="button-pagination-prev"
+                >
+                  Previous
+                </Button>
+
+                {/* Page Numbers */}
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    const showPage = 
+                      page === 1 || 
+                      page === totalPages || 
+                      Math.abs(page - currentPage) <= 1;
+                    
+                    const showEllipsis = 
+                      (page === 2 && currentPage > 3) ||
+                      (page === totalPages - 1 && currentPage < totalPages - 2);
+
+                    if (showEllipsis) {
+                      return <span key={page} className="px-2 text-muted-foreground">...</span>;
+                    }
+
+                    if (!showPage) return null;
+
+                    return (
+                      <Button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        variant={currentPage === page ? "default" : "outline"}
+                        className="px-4"
+                        data-testid={`button-page-${page}`}
+                      >
+                        {page}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <Button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  className="px-4"
+                  data-testid="button-pagination-next"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
