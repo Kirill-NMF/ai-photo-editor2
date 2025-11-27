@@ -1,0 +1,817 @@
+ISSUE: The application has critical UX/UI problems that prevent users from effectively using the photo editor:
+
+1.
+Gallery Page (client/src/pages/GalleryPage.tsx) - No Scrolling
+
+•
+Users cannot scroll to 
+
+•
+see projects below the fold
+
+•
+No pagination controls visible
+
+•
+Cannot access older projects
+
+•
+Current grid layout shows only 2 projects per row (should be 3)
+
+
+
+2.
+Editor Page (client/src/pages/EditorPage.tsx) - Layout Issues
+
+•
+Desktop: Prompt field is not full-width and not positioned above AI Provider dropdown
+
+•
+Desktop: Quick Suggestions cards cause horizontal overflow on laptop screens
+
+•
+Mobile: Entire interface is too wide, requiring horizontal scrolling
+
+•
+Poor responsive design across different screen sizes
+
+
+
+GOAL: Implement comprehensive responsive design improvements:
+
+1.
+Fix gallery to show 3 projects per row with working vertical scroll and pagination
+
+2.
+Reorganize editor desktop layout: full-width prompt field above AI Provider dropdown
+
+3.
+Optimize editor for all screen sizes without horizontal scrolling
+
+4.
+Implement mobile-first editor design with collapsible menus
+
+5.
+Set Gemini as default provider
+
+STRATEGY: We will modify GalleryPage.tsx and EditorPage.tsx to implement:
+
+•
+Gallery: 3-column grid with vertical scrolling enabled and pagination controls
+
+•
+Editor Desktop: Full-width prompt field positioned above AI Provider dropdown
+
+•
+Responsive layouts using Tailwind CSS breakpoints
+
+•
+Mobile-optimized UI with bottom sheets and hamburger menus
+
+•
+Adaptive image sizing based on viewport width
+
+═══════════════════════════════════════════════════════════════════════ IMPLEMENTATION INSTRUCTIONS: ═══════════════════════════════════════════════════════════════════════
+
+PART 1: Gallery Page - Fix Scrolling and Layout
+
+FILE TO MODIFY: client/src/pages/GalleryPage.tsx
+
+TASK 1.1: Ensure Page Container Allows Scrolling
+
+Wrap the entire gallery content in a scrollable container:
+
+TypeScript
+
+
+export default function GalleryPage() {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
+  
+  // Your existing projects data fetching logic here
+  const projects = []; // Replace with actual data
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(projects.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProjects = projects.slice(startIndex, endIndex);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold">My Projects</h1>
+        </div>
+      </header>
+
+      {/* Scrollable Content Area */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Projects Grid - 3 columns on all desktop sizes */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {currentProjects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+
+        {/* Empty State */}
+        {projects.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-gray-500 text-lg">No projects yet</p>
+            <button className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Create Your First Project
+            </button>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-8 pb-8">
+            {/* Previous Button */}
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+            >
+              Previous
+            </button>
+
+            {/* Page Numbers */}
+            <div className="flex gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Show first page, last page, current page, and pages around current
+                const showPage = 
+                  page === 1 || 
+                  page === totalPages || 
+                  Math.abs(page - currentPage) <= 1;
+                
+                const showEllipsis = 
+                  (page === 2 && currentPage > 3) ||
+                  (page === totalPages - 1 && currentPage < totalPages - 2);
+
+                if (showEllipsis) {
+                  return <span key={page} className="px-2 py-2 text-gray-500">...</span>;
+                }
+
+                if (!showPage) return null;
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`min-w-[40px] px-4 py-2 rounded-lg transition-colors ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white font-semibold'
+                        : 'border border-gray-300 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next Button */}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+
+Key Changes:
+
+•
+✅ 3 columns on desktop: md:grid-cols-3 (was 2)
+
+•
+✅ Vertical scrolling enabled: No overflow-hidden on containers
+
+•
+✅ Pagination visible: Placed after grid with proper spacing
+
+•
+✅ Sticky header: Header stays at top while scrolling
+
+•
+✅ Proper container structure: min-h-screen allows natural page scrolling
+
+Why this fixes scrolling:
+
+•
+Removed any overflow-hidden or h-screen that prevents scrolling
+
+•
+Used min-h-screen instead of h-screen to allow content to expand
+
+•
+Added proper padding at bottom (pb-8) so pagination is visible
+
+
+
+
+PART 2: Editor Page - Desktop Layout Reorganization
+
+FILE TO MODIFY: client/src/pages/EditorPage.tsx
+
+TASK 2.1: Reorganize Desktop Layout Structure
+
+Replace the existing desktop editor layout with this structure:
+
+TypeScript
+
+
+// Desktop Layout
+<div className="container mx-auto px-4 py-8 max-w-[1400px]">
+  <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+    {/* Left Sidebar - Edit History (Desktop Only) */}
+    <aside className="hidden lg:block">
+      <div className="sticky top-4">
+        <h3 className="text-lg font-semibold mb-4">Edit History</h3>
+        <div className="space-y-2 max-h-[calc(100vh-120px)] overflow-y-auto">
+          {editHistory.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">
+              No edits yet
+            </p>
+          ) : (
+            editHistory.map((edit) => (
+              <button
+                key={edit.id}
+                onClick={() => loadEdit(edit.id)}
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <img
+                  src={edit.thumbnail}
+                  alt="Edit preview"
+                  className="w-16 h-16 object-cover rounded"
+                />
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-medium line-clamp-2">
+                    {edit.prompt}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {edit.timestamp}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </aside>
+
+    {/* Main Content Area */}
+    <div className="flex flex-col gap-6">
+      {/* Top Actions */}
+      <div className="flex gap-3">
+        <button
+          onClick={handleUploadNew}
+          className="px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Upload Different Image
+        </button>
+        <button
+          onClick={handleNewProject}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          New Project
+        </button>
+      </div>
+
+      {/* Editor Area */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6">
+        {/* Image Preview */}
+        <div className="flex justify-center items-start">
+          <div className="relative">
+            <img
+              src={currentImage}
+              alt="Editor preview"
+              className="w-full max-w-[450px] lg:max-w-[600px] 2xl:max-w-[750px] h-auto rounded-lg shadow-lg"
+            />
+            {isGenerating && (
+              <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                <div className="text-white text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                  <p className="font-semibold">Generating...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Control Panel */}
+        <div className="flex flex-col gap-4">
+          {/* Prompt Field - FULL WIDTH, ABOVE AI Provider */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              Describe Your Edit
+            </label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="E.g., 'Make the sky more dramatic with sunset colors' or 'Add warm golden hour tones'"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[120px] resize-none"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Be specific for best results
+            </p>
+          </div>
+
+          {/* AI Provider Dropdown - BELOW Prompt */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              AI Provider
+            </label>
+            <select
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value as 'gemini' | 'huggingface')}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="gemini">Gemini 2.5 Flash Image (Recommended)</option>
+              <option value="huggingface">HuggingFace</option>
+            </select>
+          </div>
+
+          {/* Generate Button */}
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !prompt.trim()}
+            className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isGenerating ? 'Generating...' : 'Generate'}
+          </button>
+
+          {/* Quick Suggestions - COMPACT VERSION */}
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold mb-3">Quick Suggestions</h3>
+            <div className="grid grid-cols-1 gap-2">
+              {quickSuggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  onClick={() => setPrompt(suggestion.text)}
+                  className="p-3 text-left rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{suggestion.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {suggestion.title}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {suggestion.category}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+Key Changes:
+
+•
+✅ Prompt field ABOVE AI Provider: Changed order in layout
+
+•
+✅ Full-width prompt field: w-full ensures it spans entire container
+
+•
+✅ Larger textarea: min-h-[120px] for better usability
+
+•
+✅ Clear visual hierarchy: Labels, spacing, and sizing optimized
+
+•
+✅ Compact Quick Suggestions: Single column layout to save space
+
+Layout Structure:
+
+Plain Text
+
+
+┌─────────────────────────────────────────────────┐
+│ [Upload Different Image] [New Project]         │
+├──────────────┬──────────────────────────────────┤
+│              │  ┌────────────────────────────┐  │
+│              │  │ Describe Your Edit         │  │
+│  Edit        │  │ [Full-width textarea]      │  │
+│  History     │  │                            │  │
+│  (Sidebar)   │  └────────────────────────────┘  │
+│              │  ┌────────────────────────────┐  │
+│              │  │ AI Provider                │  │
+│  [Thumbnails]│  │ [Dropdown]                 │  │
+│              │  └────────────────────────────┘  │
+│              │  [Generate Button]              │
+│              │  Quick Suggestions...           │
+└──────────────┴──────────────────────────────────┘
+
+
+
+
+
+PART 3: Editor Page - Mobile Design
+
+TASK 3.1: Add Mobile Detection and State
+
+Add these state variables at the top of the EditorPage component:
+
+TypeScript
+
+
+const [isMobile, setIsMobile] = useState(false);
+const [showQuickSuggestions, setShowQuickSuggestions] = useState(false);
+const [showMenu, setShowMenu] = useState(false);
+
+useEffect(() => {
+  const checkMobile = () => {
+    setIsMobile(window.innerWidth < 768);
+  };
+  
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  
+  return () => window.removeEventListener('resize', checkMobile);
+}, []);
+
+
+TASK 3.2: Create Mobile Layout
+
+Add conditional rendering for mobile:
+
+TypeScript
+
+
+{isMobile ? (
+  // MOBILE LAYOUT
+  <div className="flex flex-col min-h-screen bg-gray-50">
+    {/* Header with Hamburger Menu */}
+    <header className="bg-white border-b sticky top-0 z-10">
+      <div className="flex justify-between items-center p-4">
+        <h1 className="text-lg font-bold">Photo Editor</h1>
+        <button
+          onClick={() => setShowMenu(true)}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          aria-label="Open menu"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    {/* Main Content */}
+    <main className="flex-1 overflow-y-auto p-4">
+      {/* Image Preview */}
+      <div className="mb-4 relative">
+        <img
+          src={currentImage}
+          alt="Editor preview"
+          className="w-full h-auto rounded-lg shadow-lg"
+        />
+        {isGenerating && (
+          <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+            <div className="text-white text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="font-semibold">Generating...</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Prompt Field */}
+      <div className="mb-4">
+        <label className="block text-sm font-semibold mb-2">
+          Describe Your Edit
+        </label>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="E.g., 'Make the sky more dramatic' or 'Add warm tones'"
+          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-none"
+        />
+      </div>
+
+      {/* AI Provider Dropdown */}
+      <div className="mb-4">
+        <label className="block text-sm font-semibold mb-2">AI Provider</label>
+        <select
+          value={selectedProvider}
+          onChange={(e) => setSelectedProvider(e.target.value as 'gemini' | 'huggingface')}
+          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="gemini">Gemini 2.5 Flash Image</option>
+          <option value="huggingface">HuggingFace</option>
+        </select>
+      </div>
+
+      {/* Generate Button */}
+      <button
+        onClick={handleGenerate}
+        disabled={isGenerating || !prompt.trim()}
+        className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors mb-3"
+      >
+        {isGenerating ? 'Generating...' : 'Generate'}
+      </button>
+
+      {/* Quick Suggestions Button */}
+      <button
+        onClick={() => setShowQuickSuggestions(true)}
+        className="w-full py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+      >
+        Quick Suggestions ✨
+      </button>
+    </main>
+
+    {/* Bottom Sheet for Quick Suggestions */}
+    {showQuickSuggestions && (
+      <MobileBottomSheet
+        onClose={() => setShowQuickSuggestions(false)}
+        suggestions={quickSuggestions}
+        onSelect={(text) => {
+          setPrompt(text);
+          setShowQuickSuggestions(false);
+        }}
+      />
+    )}
+
+    {/* Side Drawer for Menu */}
+    {showMenu && (
+      <MobileSideDrawer
+        onClose={() => setShowMenu(false)}
+        editHistory={editHistory}
+        onUploadNew={handleUploadNew}
+        onNewProject={handleNewProject}
+      />
+    )}
+  </div>
+) : (
+  // DESKTOP LAYOUT (from Part 2)
+  <div className="container mx-auto px-4 py-8 max-w-[1400px]">
+    {/* Desktop layout code from Part 2 */}
+  </div>
+)}
+
+
+TASK 3.3: Create Mobile Bottom Sheet Component
+
+Add this component in the same file:
+
+TypeScript
+
+
+interface MobileBottomSheetProps {
+  onClose: () => void;
+  suggestions: Array<{ title: string; text: string; icon: string; category: string }>;
+  onSelect: (text: string) => void;
+}
+
+function MobileBottomSheet({ onClose, suggestions, onSelect }: MobileBottomSheetProps) {
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-40"
+        onClick={onClose}
+        style={{ animation: 'fadeIn 0.2s ease-out' }}
+      />
+      
+      {/* Bottom Sheet */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[70vh] flex flex-col"
+        style={{ animation: 'slideUp 0.3s ease-out' }}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-12 h-1 bg-gray-300 rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="px-4 pb-3 border-b">
+          <h3 className="text-lg font-semibold">Quick Suggestions</h3>
+        </div>
+
+        {/* Suggestions List */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-2">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => onSelect(suggestion.text)}
+                className="w-full p-4 text-left rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all active:scale-95"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{suggestion.icon}</span>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{suggestion.title}</p>
+                    <p className="text-sm text-gray-500 mt-1">{suggestion.category}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
+    </>
+  );
+}
+
+
+TASK 3.4: Create Mobile Side Drawer Component
+
+TypeScript
+
+
+interface MobileSideDrawerProps {
+  onClose: () => void;
+  editHistory: Array<{ id: string; thumbnail: string; prompt: string; timestamp: string }>;
+  onUploadNew: () => void;
+  onNewProject: () => void;
+}
+
+function MobileSideDrawer({ onClose, editHistory, onUploadNew, onNewProject }: MobileSideDrawerProps) {
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-40"
+        onClick={onClose}
+        style={{ animation: 'fadeIn 0.2s ease-out' }}
+      />
+      
+      {/* Side Drawer */}
+      <div
+        className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-white z-50 shadow-2xl flex flex-col"
+        style={{ animation: 'slideLeft 0.3s ease-out' }}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="text-lg font-semibold">Menu</h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Close menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Menu Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Action Buttons */}
+          <div className="p-4 space-y-2 border-b">
+            <button
+              onClick={() => {
+                onUploadNew();
+                onClose();
+              }}
+              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Upload Different Image
+            </button>
+            <button
+              onClick={() => {
+                onNewProject();
+                onClose();
+              }}
+              className="w-full py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+            >
+              New Project
+            </button>
+          </div>
+
+          {/* Edit History */}
+          <div className="p-4">
+            <h4 className="font-semibold mb-3">Edit History</h4>
+            <div className="space-y-2">
+              {editHistory.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">
+                  No edits yet
+                </p>
+              ) : (
+                editHistory.map((edit) => (
+                  <button
+                    key={edit.id}
+                    onClick={() => {
+                      // Load edit logic
+                      onClose();
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <img
+                      src={edit.thumbnail}
+                      alt="Edit preview"
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-sm font-medium line-clamp-2">
+                        {edit.prompt}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {edit.timestamp}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideLeft {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+      `}</style>
+    </>
+  );
+}
+
+
+
+
+
+PART 4: Set Default Provider
+
+TASK 4.1: Update Initial State
+
+Find the provider state initialization and change it to:
+
+TypeScript
+
+
+const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'huggingface'>('gemini');
+
+
+
+
+
+PART 5: Example Quick Suggestions Data
+
+Add this example data structure if not already present:
+
+TypeScript
+
+
+const quickSuggestions = [
+  {
+    icon: '🌅',
+    title: 'Dramatic Sunset',
+    text: 'Make the sky more dramatic with warm sunset colors',
+    category: 'Lighting'
+  },
+  {
+    icon: '✨',
+    title: 'Golden Hour',
+    text: 'Add warm golden hour tones throughout',
+    category: 'Lighting'
+  },
+  {
+    icon: '🎨',
+    title: 'Increase Saturation',
+    text: 'Increase color saturation and vibrancy',
+    category: 'Color'
+  },
+  {
+    icon: '🌙',
+    title: 'Moody Atmosphere',
+    text: 'Create a moody, cinematic atmosphere with darker tones',
+    category: 'Style'
+  },
+];
+
+

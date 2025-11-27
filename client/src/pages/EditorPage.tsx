@@ -4,12 +4,12 @@ import type { UploadResult } from "@uppy/core";
 import UploadZone from "@/components/UploadZone";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import ImageCanvas from "@/components/ImageCanvas";
-import PromptInput from "@/components/PromptInput";
 import EditHistory, { type HistoryItem } from "@/components/EditHistory";
 import PromptSuggestions from "@/components/PromptSuggestions";
 import ProcessingIndicator from "@/components/ProcessingIndicator";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -36,7 +36,7 @@ export default function EditorPage() {
   const [currentBaseEditId, setCurrentBaseEditId] = useState<number | null>(null);
   const [overwriteLastSave, setOverwriteLastSave] = useState(false);
   const [promptText, setPromptText] = useState("");
-  const [apiProvider, setApiProvider] = useState<"huggingface" | "gemini">("huggingface");
+  const [apiProvider, setApiProvider] = useState<"huggingface" | "gemini">("gemini");
   const { toast } = useToast();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
@@ -548,9 +548,9 @@ export default function EditorPage() {
 
   return isMobile ? (
     // MOBILE LAYOUT
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Mobile Header with Hamburger Menu */}
-      <div className="flex justify-between items-center p-4 border-b bg-background sticky top-0 z-10">
+      <header className="flex justify-between items-center p-4 border-b bg-background sticky top-0 z-10">
         <h1 className="text-lg font-bold">Photo Editor</h1>
         <button
           onClick={() => setShowMenu(true)}
@@ -560,14 +560,12 @@ export default function EditorPage() {
         >
           <Menu className="w-6 h-6" />
         </button>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <main className="flex-1 overflow-y-auto p-4">
         {/* Image Preview */}
-        {isProcessing && <ProcessingIndicator progress={65} />}
-        
-        <div className="mb-4">
+        <div className="mb-4 relative">
           {showComparison ? (
             (() => {
               const baseEdit = currentBaseEditId !== null 
@@ -593,13 +591,41 @@ export default function EditorPage() {
               src={uploadedImage.currentUrl}
               alt="Editor preview"
               className="w-full h-auto rounded-lg shadow-lg"
+              data-testid="img-editor-preview"
             />
+          )}
+          {isProcessing && (
+            <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+              <ProcessingIndicator progress={65} />
+            </div>
           )}
         </div>
 
-        {/* Provider Dropdown */}
+        {/* Prompt Field - ABOVE Provider */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">AI Provider</label>
+          <label className="block text-sm font-semibold mb-2">Describe Your Edit</label>
+          <Textarea
+            placeholder="E.g., 'Make the sky more dramatic' or 'Add warm tones'"
+            value={promptText}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handlePromptChange(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' && !e.shiftKey && promptText.trim() && !isProcessing) {
+                e.preventDefault();
+                handlePromptSubmit(promptText);
+              }
+            }}
+            disabled={isProcessing}
+            className="min-h-[100px] resize-none"
+            data-testid="input-prompt-mobile"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Press Enter to generate, Shift + Enter for new line
+          </p>
+        </div>
+
+        {/* AI Provider Dropdown - BELOW Prompt */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold mb-2">AI Provider</label>
           <Select 
             value={apiProvider} 
             onValueChange={(value: "huggingface" | "gemini") => setApiProvider(value)}
@@ -609,43 +635,39 @@ export default function EditorPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="huggingface" data-testid="option-huggingface-mobile">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Hugging Face</span>
-                  <span className="text-xs text-muted-foreground">(Free)</span>
-                </div>
-              </SelectItem>
               <SelectItem value="gemini" data-testid="option-gemini-mobile">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Gemini</span>
-                  <span className="text-xs text-muted-foreground">(Paid)</span>
-                </div>
+                Gemini 2.5 Flash Image (Recommended)
+              </SelectItem>
+              <SelectItem value="huggingface" data-testid="option-huggingface-mobile">
+                HuggingFace
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Prompt Field */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Prompt</label>
-          <PromptInput 
-            value={promptText}
-            onChange={handlePromptChange}
-            onSubmit={handlePromptSubmit} 
-            isProcessing={isProcessing} 
-          />
-        </div>
+        {/* Generate Button */}
+        <Button
+          onClick={() => handlePromptSubmit(promptText)}
+          disabled={isProcessing || !promptText.trim()}
+          className="w-full mb-3"
+          size="lg"
+          data-testid="button-generate-mobile"
+        >
+          {isProcessing ? 'Generating...' : 'Generate'}
+        </Button>
 
         {/* Quick Suggestions Button */}
-        <button
+        <Button
           onClick={() => setShowQuickSuggestions(true)}
-          className="w-full py-3 border-2 border-primary text-primary rounded-lg font-semibold hover-elevate active-elevate-2 transition-colors flex items-center justify-center gap-2"
+          variant="outline"
+          className="w-full gap-2"
+          size="lg"
           data-testid="button-show-suggestions"
         >
           <Sparkles className="h-4 w-4" />
           Quick Suggestions
-        </button>
-      </div>
+        </Button>
+      </main>
 
       {/* Bottom Sheets and Drawers */}
       {showQuickSuggestions && (
@@ -671,24 +693,27 @@ export default function EditorPage() {
     </div>
   ) : (
     // DESKTOP LAYOUT
-    <div className="flex h-[calc(100vh-4rem)] bg-background">
-      {/* Left Sidebar - Edit History */}
-      <div className="w-80 border-r flex-shrink-0">
-        <EditHistory
-          historyItems={historyItems}
-          activeItemId={edits[0]?.id}
-          currentBaseId={currentBaseEditId}
-          overwriteLastSave={overwriteLastSave}
-          onOverwriteToggle={setOverwriteLastSave}
-          onSave={handleSaveEdit}
-          onUseAsBase={handleUseAsBase}
-        />
-      </div>
+    <div className="container mx-auto px-4 py-8 max-w-[1400px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+        {/* Left Sidebar - Edit History (Desktop Only) */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-4">
+            <EditHistory
+              historyItems={historyItems}
+              activeItemId={edits[0]?.id}
+              currentBaseId={currentBaseEditId}
+              overwriteLastSave={overwriteLastSave}
+              onOverwriteToggle={setOverwriteLastSave}
+              onSave={handleSaveEdit}
+              onUseAsBase={handleUseAsBase}
+            />
+          </div>
+        </aside>
 
-      {/* Main Canvas Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 p-8 overflow-auto">
-          <div className="mb-6 flex items-center gap-3">
+        {/* Main Content Area */}
+        <div className="flex flex-col gap-6">
+          {/* Top Actions */}
+          <div className="flex gap-3">
             <Button variant="ghost" onClick={handleReset} data-testid="button-reset" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Upload Different Image
@@ -697,54 +722,72 @@ export default function EditorPage() {
               New Project
             </Button>
           </div>
-          
-          <div className="relative max-w-5xl mx-auto">
-            {isProcessing && <ProcessingIndicator progress={65} />}
-            
-            {showComparison ? (
-              (() => {
-                const baseEdit = currentBaseEditId !== null 
-                  ? edits.find(e => e.id === currentBaseEditId)
-                  : null;
-                const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
-                const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
-                
-                return (
-                  <div className="rounded-lg overflow-hidden shadow-lg">
-                    <BeforeAfterSlider
-                      beforeImage={baseImageUrl}
-                      afterImage={uploadedImage.currentUrl}
-                      beforeLabel={isUsingBase ? "Base" : "Original"}
-                      afterLabel="Edited"
-                      afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
-                    />
-                  </div>
-                );
-              })()
-            ) : (
-              <ImageCanvas imageUrl={uploadedImage.currentUrl} />
-            )}
-          </div>
-        </div>
 
-        {/* Bottom Prompt Area */}
-        <div className="border-t bg-card/50 backdrop-blur-sm">
-          <div className="max-w-5xl mx-auto p-6 space-y-4">
-            <PromptSuggestions
-              suggestions={mockSuggestions}
-              onSelect={handleSuggestionSelect}
-            />
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <PromptInput 
-                  value={promptText}
-                  onChange={handlePromptChange}
-                  onSubmit={handlePromptSubmit} 
-                  isProcessing={isProcessing} 
-                />
+          {/* Editor Area - Image and Control Panel Side by Side */}
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6">
+            {/* Image Preview */}
+            <div className="flex justify-center items-start">
+              <div className="relative w-full max-w-[450px] lg:max-w-[600px] 2xl:max-w-[750px]">
+                {showComparison ? (
+                  (() => {
+                    const baseEdit = currentBaseEditId !== null 
+                      ? edits.find(e => e.id === currentBaseEditId)
+                      : null;
+                    const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
+                    const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
+                    
+                    return (
+                      <div className="rounded-lg overflow-hidden shadow-lg">
+                        <BeforeAfterSlider
+                          beforeImage={baseImageUrl}
+                          afterImage={uploadedImage.currentUrl}
+                          beforeLabel={isUsingBase ? "Base" : "Original"}
+                          afterLabel="Edited"
+                          afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
+                        />
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <ImageCanvas imageUrl={uploadedImage.currentUrl} />
+                )}
+                {isProcessing && (
+                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                    <ProcessingIndicator progress={65} />
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col gap-1.5 pb-0.5">
-                <label className="text-xs font-medium text-muted-foreground px-1">
+            </div>
+
+            {/* Control Panel */}
+            <div className="flex flex-col gap-4">
+              {/* Prompt Field - FULL WIDTH, ABOVE AI Provider */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Describe Your Edit
+                </label>
+                <Textarea
+                  placeholder="E.g., 'Make the sky more dramatic with sunset colors' or 'Add warm golden hour tones'"
+                  value={promptText}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handlePromptChange(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' && !e.shiftKey && promptText.trim() && !isProcessing) {
+                      e.preventDefault();
+                      handlePromptSubmit(promptText);
+                    }
+                  }}
+                  disabled={isProcessing}
+                  className="min-h-[120px] resize-none"
+                  data-testid="input-prompt"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Be specific for best results • Press Enter to generate, Shift + Enter for new line
+                </p>
+              </div>
+
+              {/* AI Provider Dropdown - BELOW Prompt */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
                   AI Provider
                 </label>
                 <Select 
@@ -752,27 +795,58 @@ export default function EditorPage() {
                   onValueChange={(value: "huggingface" | "gemini") => setApiProvider(value)}
                   data-testid="select-provider"
                 >
-                  <SelectTrigger className="w-48 h-9" data-testid="trigger-provider">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                      <SelectValue />
-                    </div>
+                  <SelectTrigger className="w-full" data-testid="trigger-provider">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="huggingface" data-testid="option-huggingface">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Hugging Face</span>
-                        <span className="text-xs text-muted-foreground">(Free)</span>
-                      </div>
-                    </SelectItem>
                     <SelectItem value="gemini" data-testid="option-gemini">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Gemini</span>
-                        <span className="text-xs text-muted-foreground">(Paid)</span>
-                      </div>
+                      Gemini 2.5 Flash Image (Recommended)
+                    </SelectItem>
+                    <SelectItem value="huggingface" data-testid="option-huggingface">
+                      HuggingFace
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Generate Button */}
+              <Button
+                onClick={() => handlePromptSubmit(promptText)}
+                disabled={isProcessing || !promptText.trim()}
+                className="w-full"
+                size="lg"
+                data-testid="button-generate"
+              >
+                {isProcessing ? 'Generating...' : 'Generate'}
+              </Button>
+
+              {/* Quick Suggestions - COMPACT VERSION */}
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold mb-3">Quick Suggestions</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {mockSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      onClick={() => handleSuggestionSelect(suggestion.prompt)}
+                      className="p-3 text-left rounded-lg border hover-elevate active-elevate-2 transition-all group"
+                      data-testid={`suggestion-${suggestion.id}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {suggestion.prompt}
+                          </p>
+                          {suggestion.category && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {suggestion.category}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
