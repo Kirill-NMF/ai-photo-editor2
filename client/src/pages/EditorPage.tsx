@@ -701,7 +701,7 @@ export default function EditorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
         {/* Left Sidebar - Edit History (Desktop Only >= 1024px) */}
         <aside className="hidden lg:block">
-          <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
+          <div className="sticky top-4 h-[calc(100vh-2rem)]">
             <EditHistory
               historyItems={historyItems}
               activeItemId={edits[0]?.id}
