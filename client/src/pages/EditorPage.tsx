@@ -867,6 +867,17 @@ export default function EditorPage() {
           </div>
         </div>
       </div>
+
+      {/* Side Drawer for Medium Screens */}
+      {showMenu && (
+        <MobileSideDrawer
+          onClose={() => setShowMenu(false)}
+          historyItems={historyItems}
+          onUploadNew={handleReset}
+          onNewProject={handleNewProject}
+          onUseAsBase={handleUseAsBase}
+        />
+      )}
     </div>
   );
 }
