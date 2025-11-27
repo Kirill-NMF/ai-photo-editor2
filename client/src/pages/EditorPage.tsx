@@ -692,6 +692,9 @@ export default function EditorPage() {
           onUploadNew={handleReset}
           onNewProject={handleNewProject}
           onUseAsBase={handleUseAsBase}
+          onSave={handleSaveEdit}
+          activeItemId={edits[0]?.id}
+          currentBaseId={currentBaseEditId}
         />
       )}
     </div>
@@ -876,6 +879,9 @@ export default function EditorPage() {
           onUploadNew={handleReset}
           onNewProject={handleNewProject}
           onUseAsBase={handleUseAsBase}
+          onSave={handleSaveEdit}
+          activeItemId={edits[0]?.id}
+          currentBaseId={currentBaseEditId}
         />
       )}
     </div>

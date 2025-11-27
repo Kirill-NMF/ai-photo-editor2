@@ -1,13 +1,17 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import type { HistoryItem } from "@/components/EditHistory";
+import EditHistoryItem from "@/components/EditHistoryItem";
 
 interface MobileSideDrawerProps {
   onClose: () => void;
   historyItems: HistoryItem[];
   onUploadNew: () => void;
   onNewProject: () => void;
-  onUseAsBase?: (editId: number) => void;
+  onUseAsBase: (editId: number | string) => void;
+  onSave?: (editId: number) => void;
+  activeItemId?: number | string;
+  currentBaseId?: number | null;
 }
 
 export default function MobileSideDrawer({ 
@@ -15,7 +19,10 @@ export default function MobileSideDrawer({
   historyItems, 
   onUploadNew, 
   onNewProject,
-  onUseAsBase 
+  onUseAsBase,
+  onSave,
+  activeItemId,
+  currentBaseId
 }: MobileSideDrawerProps) {
   // Handle Escape key
   useEffect(() => {
@@ -81,39 +88,28 @@ export default function MobileSideDrawer({
           {/* Edit History */}
           <div className="p-4">
             <h4 className="font-semibold mb-3">Edit History</h4>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {historyItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   No edits yet
                 </p>
               ) : (
-                historyItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      if (onUseAsBase && typeof item.id === 'number') {
-                        onUseAsBase(item.id);
-                      }
-                      onClose();
-                    }}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover-elevate active-elevate-2 transition-colors"
-                    data-testid={`button-history-${item.id}`}
-                  >
-                    <img
-                      src={item.resultUrl}
-                      alt="Edit preview"
-                      className="w-16 h-16 object-cover rounded"
+                historyItems.map((item) => {
+                  const isBase = item.isOriginal 
+                    ? currentBaseId === null 
+                    : currentBaseId === item.id;
+                  
+                  return (
+                    <EditHistoryItem
+                      key={item.id}
+                      item={item}
+                      isActive={item.id === activeItemId}
+                      isBase={isBase}
+                      onSave={typeof item.id === 'number' && onSave ? () => onSave(item.id as number) : undefined}
+                      onUseAsBase={() => onUseAsBase(item.id)}
                     />
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-sm font-medium line-clamp-2">
-                        {item.prompt || "No prompt"}
-                      </p>
-                      {item.isSaved && (
-                        <span className="text-xs text-primary">Saved</span>
-                      )}
-                    </div>
-                  </button>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
