@@ -23,7 +23,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="flex items-center gap-2 p-4 border-b">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
           </header>
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-y-auto">
             {children}
           </main>
         </div>
