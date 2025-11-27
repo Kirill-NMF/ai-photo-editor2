@@ -64,16 +64,20 @@ export default function EditorPage() {
     promptTextRef.current = promptText;
   }, [uploadedImage, edits, currentBaseEditId, overwriteLastSave, promptText]);
 
-  // Mobile detection
+  // Screen size detection
+  const [isMediumScreen, setIsMediumScreen] = useState(false);
+  
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsMediumScreen(width >= 768 && width < 1024); // Between tablet and desktop (lg breakpoint)
     };
     
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
     
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
   const mockSuggestions = [
@@ -692,12 +696,12 @@ export default function EditorPage() {
       )}
     </div>
   ) : (
-    // DESKTOP LAYOUT
+    // DESKTOP AND MEDIUM SCREEN LAYOUT
     <div className="container mx-auto px-4 py-8 max-w-[1400px]">
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
-        {/* Left Sidebar - Edit History (Desktop Only) */}
+        {/* Left Sidebar - Edit History (Desktop Only >= 1024px) */}
         <aside className="hidden lg:block">
-          <div className="sticky top-4">
+          <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
             <EditHistory
               historyItems={historyItems}
               activeItemId={edits[0]?.id}
@@ -712,8 +716,19 @@ export default function EditorPage() {
 
         {/* Main Content Area */}
         <div className="flex flex-col gap-6">
-          {/* Top Actions */}
+          {/* Top Actions with Hamburger Menu for Medium Screens */}
           <div className="flex gap-3">
+            {isMediumScreen && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowMenu(true)} 
+                data-testid="button-menu-medium"
+                className="lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <Button variant="ghost" onClick={handleReset} data-testid="button-reset" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Upload Different Image
