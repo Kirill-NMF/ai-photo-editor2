@@ -48,6 +48,7 @@ export default function EditorPage() {
   
   const hasAttemptedRestore = useRef(false);
   const currentRestoreToken = useRef<number>(0);
+  const isInitializing = useRef(true); // Prevent cache saves during initial load
 
   // Keep refs in sync with state for debounced saves
   const uploadedImageRef = useRef(uploadedImage);
@@ -151,6 +152,9 @@ export default function EditorPage() {
       
       // Load cached state for this image (if any)
       loadCachedState(image.id);
+      
+      // Allow cache saves now that upload is complete
+      isInitializing.current = false;
 
       toast({
         title: "Image uploaded successfully",
@@ -261,6 +265,9 @@ export default function EditorPage() {
     // Set as last active
     EditorCache.setLastActiveImageId(imageId);
     
+    // Allow cache saves now that initialization is complete
+    isInitializing.current = false;
+    
     console.log('[EditorPage] Session restored successfully');
   };
 
@@ -288,7 +295,7 @@ export default function EditorPage() {
   // Save state to cache using refs for latest values
   const saveToCacheFromRefs = useCallback(() => {
     const image = uploadedImageRef.current;
-    if (!image) return;
+    if (!image || isInitializing.current) return; // Don't save during initialization
     
     // Cancel any pending debounced saves to prevent stale data from overwriting
     debouncedSaveRef.current.cancel();
@@ -306,7 +313,7 @@ export default function EditorPage() {
   const debouncedSaveRef = useRef(
     debounce(() => {
       const image = uploadedImageRef.current;
-      if (!image) return;
+      if (!image || isInitializing.current) return; // Don't save during initialization
       
       EditorCache.save(image.id, {
         edits: editsRef.current,
@@ -473,6 +480,7 @@ export default function EditorPage() {
     setCurrentBaseEditId(null);
     setPromptText("");
     setOverwriteLastSave(false);
+    isInitializing.current = true; // Reset flag for next upload
   };
 
   const handleNewProject = () => {
@@ -493,6 +501,7 @@ export default function EditorPage() {
     setCurrentBaseEditId(null);
     setPromptText("");
     setOverwriteLastSave(false);
+    isInitializing.current = true; // Reset flag for next upload
     
     toast({
       title: "New project started",
