@@ -53,6 +53,7 @@ export default function EditorPage() {
   const uploadedImageRef = useRef(uploadedImage);
   const editsRef = useRef(edits);
   const currentBaseEditIdRef = useRef(currentBaseEditId);
+  const showComparisonRef = useRef(showComparison);
   const overwriteLastSaveRef = useRef(overwriteLastSave);
   const promptTextRef = useRef(promptText);
 
@@ -60,9 +61,10 @@ export default function EditorPage() {
     uploadedImageRef.current = uploadedImage;
     editsRef.current = edits;
     currentBaseEditIdRef.current = currentBaseEditId;
+    showComparisonRef.current = showComparison;
     overwriteLastSaveRef.current = overwriteLastSave;
     promptTextRef.current = promptText;
-  }, [uploadedImage, edits, currentBaseEditId, overwriteLastSave, promptText]);
+  }, [uploadedImage, edits, currentBaseEditId, showComparison, overwriteLastSave, promptText]);
 
   // Screen size detection
   const [isMediumScreen, setIsMediumScreen] = useState(false);
@@ -201,6 +203,7 @@ export default function EditorPage() {
         setEdits(cached.edits || []);
       }
       setCurrentBaseEditId(cached.currentBaseEditId);
+      setShowComparison(cached.showComparison ?? false);
       setPromptText(cached.generateInputText);
       setOverwriteLastSave(cached.overwriteLastSave);
     }
@@ -276,6 +279,7 @@ export default function EditorPage() {
     EditorCache.save(image.id, {
       edits: editsRef.current,
       currentBaseEditId: currentBaseEditIdRef.current,
+      showComparison: showComparisonRef.current,
       generateInputText: promptTextRef.current,
       overwriteLastSave: overwriteLastSaveRef.current,
     });
@@ -290,18 +294,19 @@ export default function EditorPage() {
       EditorCache.save(image.id, {
         edits: editsRef.current,
         currentBaseEditId: currentBaseEditIdRef.current,
+        showComparison: showComparisonRef.current,
         generateInputText: promptTextRef.current,
         overwriteLastSave: overwriteLastSaveRef.current,
       });
     }, 500)
   );
 
-  // Save to cache immediately when edits, base, or overwrite changes (not debounced)
+  // Save to cache immediately when edits, base, comparison, or overwrite changes (not debounced)
   useEffect(() => {
     if (uploadedImage) {
       saveToCacheFromRefs();
     }
-  }, [edits, currentBaseEditId, overwriteLastSave, uploadedImage, saveToCacheFromRefs]);
+  }, [edits, currentBaseEditId, showComparison, overwriteLastSave, uploadedImage, saveToCacheFromRefs]);
 
   // Save before unmounting
   useEffect(() => {
