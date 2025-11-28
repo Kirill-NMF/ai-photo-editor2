@@ -1,0 +1,584 @@
+ISSUE: Editor state is not properly persisted after page reload
+
+Current Problems:
+
+1.
+Before/After slider disappears after page reload
+
+•
+User has to manually toggle comparison again
+
+•
+Loses context of what was being compared
+
+
+
+2.
+"Use as Base" selection resets to original image
+
+•
+User selects edit #5 as base
+
+•
+After reload, base resets to original image (not edit #5)
+
+•
+This breaks the editing workflow
+
+
+
+3.
+Slider state is lost
+
+•
+Slider position and comparison state not saved
+
+•
+User loses visual comparison context
+
+
+
+Expected Behavior After Reload:
+
+✅ Before/After slider should remain visible if it was visible before reload ✅ Selected base edit (e.g., edit #5) should remain as base ✅ Slider should show: selected base (left) vs latest edit (right) ✅ Edit history should be fully restored
+
+GOAL: Persist editor state (showComparison, currentBaseEditId) in localStorage and restore it correctly on page reload.
+
+STRATEGY:
+
+1.
+Add showComparison to EditorCacheState interface
+
+2.
+Save showComparison whenever it changes
+
+3.
+Restore showComparison when loading cached state
+
+4.
+Ensure currentBaseEditId is properly restored (it's already in cache but may have a bug)
+
+5.
+Auto-show slider if there are edits available
+
+═══════════════════════════════════════════════════════════════════════ IMPLEMENTATION INSTRUCTIONS: ═══════════════════════════════════════════════════════════════════════
+
+PART 1: Update EditorCache Interface
+
+FILE TO MODIFY: client/src/utils/editorCache.ts
+
+TASK 1.1: Add showComparison to EditorCacheState
+
+Find the EditorCacheState interface (around line 15) and add showComparison:
+
+TypeScript
+
+
+export interface EditorCacheState {
+  imageId: number;
+  edits: CachedEdit[];
+  currentBaseEditId: number | null;
+  generateInputText: string;
+  overwriteLastSave: boolean;
+  showComparison: boolean;  // ← ADD THIS LINE
+  lastUpdated: number;
+}
+
+
+TASK 1.2: Update save() method to include showComparison
+
+Find the save method (around line 25) and update it:
+
+TypeScript
+
+
+export const EditorCache = {
+  save: (imageId: number, state: Partial<EditorCacheState>): boolean => {
+    try {
+      const cacheKey = `${CACHE_PREFIX}${imageId}`;
+      const cacheData: EditorCacheState = {
+        imageId,
+        edits: state.edits || [],
+        currentBaseEditId: state.currentBaseEditId ?? null,
+        generateInputText: state.generateInputText || '',
+        overwriteLastSave: state.overwriteLastSave || false,
+        showComparison: state.showComparison ?? false,  // ← ADD THIS LINE
+        lastUpdated: Date.now()
+      };
+      
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      console.log('[EditorCache] State saved:', cacheKey);
+      return true;
+    } catch (error) {
+      console.error('[EditorCache] Failed to save:', error);
+      return false;
+    }
+  },
+  // ... rest of the methods stay the same
+};
+
+
+
+
+
+PART 2: Update EditorPage to Save and Restore showComparison
+
+FILE TO MODIFY: client/src/pages/EditorPage.tsx
+
+TASK 2.1: Add showComparisonRef
+
+Find the refs section (around line 52-57) and add showComparisonRef:
+
+TypeScript
+
+
+// Keep refs in sync with state for debounced saves
+const uploadedImageRef = useRef(uploadedImage);
+const editsRef = useRef(edits);
+const currentBaseEditIdRef = useRef(currentBaseEditId);
+const overwriteLastSaveRef = useRef(overwriteLastSave);
+const promptTextRef = useRef(promptText);
+const showComparisonRef = useRef(showComparison);  // ← ADD THIS LINE
+
+
+TASK 2.2: Sync showComparisonRef with state
+
+Find the useEffect that syncs refs (around line 59-65) and add showComparison:
+
+TypeScript
+
+
+useEffect(() => {
+  uploadedImageRef.current = uploadedImage;
+  editsRef.current = edits;
+  currentBaseEditIdRef.current = currentBaseEditId;
+  overwriteLastSaveRef.current = overwriteLastSave;
+  promptTextRef.current = promptText;
+  showComparisonRef.current = showComparison;  // ← ADD THIS LINE
+}, [uploadedImage, edits, currentBaseEditId, overwriteLastSave, promptText, showComparison]);  // ← ADD showComparison to dependencies
+
+
+TASK 2.3: Update loadCachedState to restore showComparison
+
+Find the loadCachedState function (around line 196) and update it:
+
+TypeScript
+
+
+// Load cached state for an image (only UI state, not edits from API)
+const loadCachedState = (imageId: number, skipEdits: boolean = false) => {
+  const cached = EditorCache.load(imageId);
+  if (cached) {
+    console.log('[EditorPage] Restoring state from cache');
+    if (!skipEdits) {
+      setEdits(cached.edits || []);
+    }
+    setCurrentBaseEditId(cached.currentBaseEditId);
+    setPromptText(cached.generateInputText);
+    setOverwriteLastSave(cached.overwriteLastSave);
+    
+    // ← ADD THIS BLOCK:
+    // Restore showComparison, or auto-enable if there are edits
+    const shouldShowComparison = cached.showComparison || 
+      (cached.edits && cached.edits.length > 0);
+    setShowComparison(shouldShowComparison);
+    
+    console.log('[EditorPage] Restored showComparison:', shouldShowComparison);
+    console.log('[EditorPage] Restored currentBaseEditId:', cached.currentBaseEditId);
+  }
+};
+
+
+Why this logic?
+
+•
+If showComparison was true before reload → restore it as true
+
+•
+If there are edits in history → auto-enable slider (better UX)
+
+•
+This ensures slider is visible when user has work in progress
+
+TASK 2.4: Update saveToCacheFromRefs to include showComparison
+
+Find the saveToCacheFromRefs function (around line 273-281) and update it:
+
+TypeScript
+
+
+const saveToCacheFromRefs = useCallback(() => {
+  const image = uploadedImageRef.current;
+  if (!image) return;
+  
+  // Cancel any pending debounced saves to prevent stale data from overwriting
+  debouncedSaveRef.current.cancel();
+  
+  EditorCache.save(image.id, {
+    edits: editsRef.current,
+    currentBaseEditId: currentBaseEditIdRef.current,
+    generateInputText: promptTextRef.current,
+    overwriteLastSave: overwriteLastSaveRef.current,
+    showComparison: showComparisonRef.current,  // ← ADD THIS LINE
+  });
+}, []);
+
+
+TASK 2.5: Update debounced save to include showComparison
+
+Find the debouncedSaveRef initialization (around line 285-295) and update it:
+
+TypeScript
+
+
+const debouncedSaveRef = useRef(
+  debounce(() => {
+    const image = uploadedImageRef.current;
+    if (!image) return;
+    
+    EditorCache.save(image.id, {
+      edits: editsRef.current,
+      currentBaseEditId: currentBaseEditIdRef.current,
+      generateInputText: promptTextRef.current,
+      overwriteLastSave: overwriteLastSaveRef.current,
+      showComparison: showComparisonRef.current,  // ← ADD THIS LINE
+    });
+  }, 500)
+);
+
+
+TASK 2.6: Add console logging for debugging
+
+Add logging when currentBaseEditId or showComparison changes:
+
+TypeScript
+
+
+// Add this useEffect after the screen size detection useEffect (around line 82)
+useEffect(() => {
+  console.log('[EditorPage] State changed:', {
+    showComparison,
+    currentBaseEditId,
+    editsCount: edits.length
+  });
+}, [showComparison, currentBaseEditId, edits.length]);
+
+
+This helps debug state restoration issues.
+
+
+
+
+PART 3: Ensure Slider Shows Correct Images
+
+TASK 3.1: Verify slider logic
+
+The slider rendering logic (around line 573-582 and 749-758) should already be correct, but verify it looks like this:
+
+TypeScript
+
+
+{showComparison ? (
+  (() => {
+    const baseEdit = currentBaseEditId !== null 
+      ? edits.find(e => e.id === currentBaseEditId)
+      : null;
+    const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
+    const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
+    
+    return (
+      <div className="rounded-lg overflow-hidden shadow-lg">
+        <BeforeAfterSlider
+          beforeImage={baseImageUrl}
+          afterImage={edits[0]?.resultUrl || uploadedImage.originalUrl}
+          beforeLabel={isUsingBase ? "Selected Base" : "Original"}
+          afterLabel="Current Edit"
+        />
+      </div>
+    );
+  })()
+) : (
+  // ... regular image display
+)}
+
+
+Key points:
+
+•
+baseImageUrl = selected edit OR original (if no base selected)
+
+•
+afterImage = latest edit (edits[0])
+
+•
+Labels change based on whether base is selected
+
+
+
+
+PART 4: Handle Edge Cases
+
+TASK 4.1: Reset showComparison when clearing state
+
+Find the handleReset function (around line 438-449) and ensure it resets showComparison:
+
+TypeScript
+
+
+const handleReset = () => {
+  currentRestoreToken.current++;
+  
+  if (uploadedImage) {
+    EditorCache.clear(uploadedImage.id);
+    EditorCache.setLastActiveImageId(0);
+  }
+  setUploadedImage(null);
+  setEdits([]);
+  setShowComparison(false);  // ← ADD THIS LINE
+  setCurrentBaseEditId(null);  // ← ADD THIS LINE if not present
+  setPromptText("");  // ← ADD THIS LINE if not present
+};
+
+
+TASK 4.2: Reset showComparison when starting new project
+
+Find the handleNewProject function (around line 456-469) and ensure it resets state:
+
+TypeScript
+
+
+const handleNewProject = () => {
+  currentRestoreToken.current++;
+  
+  if (uploadedImage) {
+    EditorCache.clear(uploadedImage.id);
+  }
+  
+  EditorCache.clearLastActiveImageId();
+  
+  setUploadedImage(null);
+  setEdits([]);
+  setShowComparison(false);  // ← ADD THIS LINE
+  setCurrentBaseEditId(null);  // ← ADD THIS LINE if not present
+  setPromptText("");  // ← ADD THIS LINE if not present
+  setIsProcessing(false);
+};
+
+
+═══════════════════════════════════════════════════════════════════════ TESTING CHECKLIST: ═══════════════════════════════════════════════════════════════════════
+
+Test 1: Basic State Persistence
+
+1.
+✅ Upload an image
+
+2.
+✅ Generate 3 edits
+
+3.
+✅ Enable Before/After slider
+
+4.
+✅ Reload page
+
+5.
+✅ Verify: Slider is still visible
+
+6.
+✅ Verify: Shows original (left) vs latest edit (right)
+
+Test 2: Use as Base Persistence
+
+1.
+✅ Upload an image
+
+2.
+✅ Generate 5 edits
+
+3.
+✅ Click "Use as Base" on edit #3
+
+4.
+✅ Verify: Slider shows edit #3 (left) vs edit #5 (right)
+
+5.
+✅ Reload page
+
+6.
+✅ Verify: Slider still shows edit #3 (left) vs edit #5 (right)
+
+7.
+✅ Generate new edit
+
+8.
+✅ Verify: New edit uses edit #3 as base
+
+Test 3: Console Logging
+
+1.
+✅ Open browser console (F12)
+
+2.
+✅ Upload image and generate edits
+
+3.
+✅ Look for logs:
+
+•
+[EditorCache] State saved: photo_editor_state_123
+
+•
+[EditorPage] Restored showComparison: true
+
+•
+[EditorPage] Restored currentBaseEditId: 456
+
+
+
+4.
+✅ Reload page
+
+5.
+✅ Verify logs show correct restoration
+
+Test 4: Edge Cases
+
+1.
+✅ Upload image, generate edits, reload → verify state restored
+
+2.
+✅ Click "Reset" → verify slider disappears
+
+3.
+✅ Click "New Project" → verify state cleared
+
+4.
+✅ Generate edits without enabling slider → reload → verify slider auto-enables
+
+5.
+✅ Close tab, reopen → verify last session restores
+
+Test 5: Multiple Images
+
+1.
+✅ Upload image A, generate edits, select base
+
+2.
+✅ Upload image B, generate edits, select different base
+
+3.
+✅ Reload page
+
+4.
+✅ Verify: Image B state restored correctly
+
+5.
+✅ Switch to image A (if possible)
+
+6.
+✅ Verify: Image A state restored correctly
+
+═══════════════════════════════════════════════════════════════════════ DEBUGGING TIPS: ═══════════════════════════════════════════════════════════════════════
+
+If state is not restoring correctly:
+
+1.
+Check localStorage in browser DevTools:
+
+•
+Open DevTools → Application → Local Storage
+
+•
+Look for keys: photo_editor_state_123, photo_editor_last_active_id
+
+•
+Verify showComparison and currentBaseEditId are saved
+
+
+
+2.
+Check console logs:
+
+•
+Look for [EditorCache] State saved
+
+•
+Look for [EditorPage] Restoring state from cache
+
+•
+Verify values are correct
+
+
+
+3.
+Check if refs are syncing:
+
+•
+Add console.log in the ref sync useEffect
+
+•
+Verify showComparisonRef.current updates when showComparison changes
+
+
+
+4.
+Check if loadCachedState is called:
+
+•
+Add console.log at the start of loadCachedState
+
+•
+Verify it's called on page load
+
+
+
+═══════════════════════════════════════════════════════════════════════ SUMMARY OF CHANGES: ═══════════════════════════════════════════════════════════════════════
+
+editorCache.ts:
+
+•
+✅ Added showComparison: boolean to EditorCacheState interface
+
+•
+✅ Updated save() method to persist showComparison
+
+EditorPage.tsx:
+
+•
+✅ Added showComparisonRef for debounced saves
+
+•
+✅ Synced showComparisonRef with showComparison state
+
+•
+✅ Updated loadCachedState() to restore showComparison
+
+•
+✅ Updated saveToCacheFromRefs() to save showComparison
+
+•
+✅ Updated debounced save to include showComparison
+
+•
+✅ Added console logging for debugging
+
+•
+✅ Reset showComparison in handleReset() and handleNewProject()
+
+Result:
+
+•
+✅ Before/After slider persists after reload
+
+•
+✅ Selected base edit persists correctly
+
+•
+✅ Slider shows correct images (base vs latest)
+
+•
+✅ Edit history fully restored
+
+•
+✅ Better UX with auto-enabled slider when edits exist
+

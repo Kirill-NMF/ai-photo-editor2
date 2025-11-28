@@ -82,12 +82,21 @@ export default function EditorPage() {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('[EditorPage] State changed:', {
+      showComparison,
+      currentBaseEditId,
+      editsCount: edits.length
+    });
+  }, [showComparison, currentBaseEditId, edits.length]);
+
   const mockSuggestions = [
-    { id: 1, prompt: "Make the sky more dramatic with sunset colors", category: "lighting" },
-    { id: 2, prompt: "Add warm golden hour tones throughout", category: "color" },
-    { id: 3, prompt: "Increase contrast and saturation", category: "color" },
-    { id: 4, prompt: "Apply vintage film effect", category: "style" },
-    { id: 5, prompt: "Add soft bokeh background blur", category: "effects" }
+    { id: 1, prompt: "Render the subject with a 50% more athletic physique. Keep the clothing exactly the same, but show the physical changes through the fabric.", category: "Change body" },
+    { id: 2, prompt: "Dress the user in asap rocky like vibe clothing to be made entirely of flowing, reflective liquid gold. High contrast reflections, expensive luxury look.", category: "Change clothes" },
+    { id: 3, prompt: "Place a colossal, building-sized pigeon (bird) behind the user it has godzila head with fire-red eyes walking in the city background. It should look menacing like Godzilla. Low angle shot.", category: "Background object" },
+    { id: 4, prompt: "Apply a thermal heat-map aura outlining the body. The edges of the person should glow bright orange and red (hot), fading into deep blue (cold). Add distortion like a melted VHS tape around the limbs.", category: "Cool aura" },
+    { id: 5, prompt: "Transform the image into a cracked, 17th-century oil painting. Deep shadows (chiaroscuro), visible heavy brushstrokes, and a golden varnish finish. it's like rap album cover but without any writings", category: "Adjust style" }
   ];
 
   const handleGetUploadParameters = async () => {
@@ -203,9 +212,17 @@ export default function EditorPage() {
         setEdits(cached.edits || []);
       }
       setCurrentBaseEditId(cached.currentBaseEditId);
-      setShowComparison(cached.showComparison ?? false);
+      
+      // Restore showComparison, or auto-enable if there are edits
+      const shouldShowComparison = cached.showComparison || 
+        (cached.edits && cached.edits.length > 0);
+      setShowComparison(shouldShowComparison);
+      
       setPromptText(cached.generateInputText);
       setOverwriteLastSave(cached.overwriteLastSave);
+      
+      console.log('[EditorPage] Restored showComparison:', shouldShowComparison);
+      console.log('[EditorPage] Restored currentBaseEditId:', cached.currentBaseEditId);
     }
   };
 
@@ -581,15 +598,16 @@ export default function EditorPage() {
                 ? edits.find(e => e.id === currentBaseEditId)
                 : null;
               const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
+              const afterImageUrl = edits[0]?.resultUrl || uploadedImage.currentUrl;
               const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
               
               return (
                 <div className="rounded-lg overflow-hidden shadow-lg">
                   <BeforeAfterSlider
                     beforeImage={baseImageUrl}
-                    afterImage={uploadedImage.currentUrl}
-                    beforeLabel={isUsingBase ? "Base" : "Original"}
-                    afterLabel="Edited"
+                    afterImage={afterImageUrl}
+                    beforeLabel={isUsingBase ? "Selected Base" : "Original"}
+                    afterLabel="Current Edit"
                     afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
                   />
                 </div>
@@ -757,15 +775,16 @@ export default function EditorPage() {
                       ? edits.find(e => e.id === currentBaseEditId)
                       : null;
                     const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
+                    const afterImageUrl = edits[0]?.resultUrl || uploadedImage.currentUrl;
                     const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
                     
                     return (
                       <div className="rounded-lg overflow-hidden shadow-lg">
                         <BeforeAfterSlider
                           beforeImage={baseImageUrl}
-                          afterImage={uploadedImage.currentUrl}
-                          beforeLabel={isUsingBase ? "Base" : "Original"}
-                          afterLabel="Edited"
+                          afterImage={afterImageUrl}
+                          beforeLabel={isUsingBase ? "Selected Base" : "Original"}
+                          afterLabel="Current Edit"
                           afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
                         />
                       </div>
