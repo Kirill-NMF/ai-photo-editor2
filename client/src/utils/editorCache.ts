@@ -16,6 +16,7 @@ export interface EditorCacheState {
   imageId: number;
   edits: CachedEdit[];
   currentBaseEditId: number | null;
+  showComparison: boolean;
   generateInputText: string;
   overwriteLastSave: boolean;
   lastUpdated: number;
@@ -29,6 +30,7 @@ export const EditorCache = {
         imageId,
         edits: state.edits || [],
         currentBaseEditId: state.currentBaseEditId ?? null,
+        showComparison: state.showComparison ?? false,
         generateInputText: state.generateInputText || '',
         overwriteLastSave: state.overwriteLastSave || false,
         lastUpdated: Date.now()
