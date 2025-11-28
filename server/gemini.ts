@@ -1,149 +1,150 @@
-export interface ImageEditRequest {
+import { GoogleGenAI } from "@google/genai";
+
+const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY is not set in environment variables");
+}
+
+// Initialize Google AI Studio client
+const ai = new GoogleGenAI({
+  apiKey: apiKey
+});
+
+interface GeminiParams {
   imageUrl: string;
   prompt: string;
 }
 
 export interface ImageEditResult {
-  imageData: string; // base64 encoded image
+  imageData: string;
   mimeType: string;
 }
 
 /**
- * Edit an image using Gemini 2.0 Flash Experimental model via REST API
- * Uses generativelanguage.googleapis.com (NOT Vertex AI)
+ * Convert image URL to base64
  */
-export async function editImageWithGemini(
-  request: ImageEditRequest
-): Promise<ImageEditResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
+async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  console.log(`[Gemini] Fetching image from URL: ${url}`);
   
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured");
+  let base64Data: string;
+  let mimeType: string;
+
+  if (url.startsWith("data:")) {
+    // Handle data URL
+    const matches = url.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      throw new Error("Invalid data URL format");
+    }
+    mimeType = matches[1];
+    base64Data = matches[2];
+  } else {
+    // Fetch from HTTP URL
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    
+    mimeType = response.headers.get("content-type") || "image/jpeg";
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    base64Data = buffer.toString("base64");
   }
 
+  console.log(`[Gemini] Image converted to base64, mimeType: ${mimeType}`);
+  return { base64: base64Data, mimeType };
+}
+
+/**
+ * Edit image using Gemini 2.5 Flash Image model
+ */
+export async function editImageWithGemini(params: GeminiParams): Promise<ImageEditResult> {
+  const { imageUrl, prompt } = params;
+
+  console.log('[Gemini] Starting image edit request');
+  console.log('[Gemini] Prompt:', prompt);
+
   try {
-    console.log("[Gemini] Starting image edit request...");
-    
-    // Parse data URL to get image data and mime type
-    let imageBase64: string;
-    let mimeType: string;
+    // Convert image to base64
+    const { base64, mimeType } = await urlToBase64(imageUrl);
 
-    if (request.imageUrl.startsWith("data:")) {
-      // Parse data URL
-      const matches = request.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-      if (!matches) {
-        throw new Error("Invalid data URL format");
-      }
-      mimeType = matches[1];
-      imageBase64 = matches[2];
-      console.log(`[Gemini] Parsed data URL. Mime type: ${mimeType}`);
-    } else {
-      // Fetch from URL
-      console.log(`[Gemini] Fetching image from URL: ${request.imageUrl}`);
-      const imageResponse = await fetch(request.imageUrl);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-      }
-      const imageBuffer = await imageResponse.arrayBuffer();
-      imageBase64 = Buffer.from(imageBuffer).toString("base64");
-      mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
-      console.log(`[Gemini] Image fetched and converted to base64. Mime type: ${mimeType}`);
-    }
-
-    // Use Gemini REST API (generativelanguage.googleapis.com)
-    // Model: gemini-2.0-flash-exp (supports image generation)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
-    
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: imageBase64,
-              },
-            },
-            {
-              text: request.prompt,
-            },
-          ],
+    // Prepare the prompt with image
+    // IMPORTANT: This is the correct format for gemini-2.5-flash-image
+    const contents = [
+      { text: prompt },
+      {
+        inlineData: {
+          mimeType: mimeType,
+          data: base64,
         },
-      ],
-      generationConfig: {
-        response_modalities: ["IMAGE"],
       },
-    };
+    ];
 
-    console.log("[Gemini] Sending request to Gemini API...");
-    console.log(`[Gemini] Model: gemini-2.0-flash-exp`);
-    console.log(`[Gemini] Prompt: ${request.prompt}`);
+    console.log('[Gemini] Sending request to Gemini API...');
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
+    // Make API request
+    // CRITICAL: Do NOT use responseModalities for gemini-2.5-flash-image
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: contents,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[Gemini] API error response:", errorText);
+    console.log('[Gemini] Response received');
+
+    // Extract image from response
+    if (response.candidates && response.candidates.length > 0) {
+      const candidate = response.candidates[0];
       
-      // Handle specific HTTP status codes
-      if (response.status === 401) {
-        throw new Error("INVALID_API_KEY: Authentication failed. Check your Gemini API key.");
-      } else if (response.status === 429) {
-        throw new Error("QUOTA_EXCEEDED: You've reached your API usage limit.");
-      } else if (response.status === 403) {
-        throw new Error("API_ACCESS_DENIED: Access denied. Check API key permissions.");
+      if (candidate.content && candidate.content.parts) {
+        for (const part of candidate.content.parts) {
+          // Check for text response
+          if (part.text) {
+            console.log('[Gemini] Text response:', part.text);
+          }
+          
+          // Check for image response
+          if (part.inlineData && part.inlineData.data) {
+            console.log('[Gemini] Image data found in response');
+            
+            const imageData = part.inlineData.data;
+            const responseMimeType = part.inlineData.mimeType || "image/png";
+            
+            return {
+              imageData: imageData,
+              mimeType: responseMimeType,
+            };
+          }
+        }
       }
-      
-      throw new Error(`Gemini API request failed with status ${response.status}: ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log("[Gemini] Response received successfully");
+    throw new Error('No image data found in Gemini API response');
 
-    // Extract the generated image from response
-    if (!data.candidates || data.candidates.length === 0) {
-      console.error("[Gemini] No candidates in response:", JSON.stringify(data));
-      throw new Error("No candidates returned from Gemini API");
-    }
-
-    const candidate = data.candidates[0];
-    if (!candidate.content || !candidate.content.parts) {
-      console.error("[Gemini] No content/parts in candidate:", JSON.stringify(candidate));
-      throw new Error("No content in Gemini response");
-    }
-
-    // Find the image part (inline_data)
-    const imagePart = candidate.content.parts.find((part: any) => part.inline_data);
-
-    if (!imagePart || !imagePart.inline_data) {
-      console.error("[Gemini] No image in response parts:", JSON.stringify(candidate.content.parts));
-      throw new Error("No image data in response. Model may not support image generation.");
-    }
-
-    console.log("[Gemini] Image extracted successfully");
-
-    return {
-      imageData: imagePart.inline_data.data,
-      mimeType: imagePart.inline_data.mime_type || "image/jpeg",
-    };
   } catch (error: any) {
-    console.error("[Gemini] Error:", error);
+    console.error('[Gemini] Error:', error.message);
     
-    // Re-throw known errors
-    if (error.message.startsWith("INVALID_API_KEY:") || 
-        error.message.startsWith("QUOTA_EXCEEDED:") ||
-        error.message.startsWith("API_ACCESS_DENIED:")) {
-      throw error;
+    // Handle specific error cases
+    if (error?.message?.includes("quota") || error?.message?.includes("429")) {
+      throw new Error("QUOTA_EXCEEDED: You've reached your API usage limit. Please try again later.");
     }
     
-    // Generic error handling
+    if (error?.message?.includes("401") || error?.message?.includes("unauthorized")) {
+      throw new Error("INVALID_API_KEY: Authentication failed. Check your GEMINI_API_KEY in Secrets.");
+    }
+    
+    if (error?.message?.includes("403") || error?.message?.includes("forbidden")) {
+      throw new Error("API_ACCESS_DENIED: Access denied. Verify your API key has image generation permissions.");
+    }
+
+    if (error?.message?.includes("404")) {
+      throw new Error("MODEL_NOT_FOUND: The gemini-2.5-flash-image model was not found. Check if it's available in your region.");
+    }
+
+    if (error?.message?.includes("400") && error?.message?.includes("modalities")) {
+      throw new Error("INVALID_REQUEST: The model configuration is incorrect. This error should not occur with the fixed code.");
+    }
+    
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    throw new Error(`Failed to edit image with Gemini: ${errorMessage}`);
+    throw new Error(`Gemini API Error: ${errorMessage}`);
   }
 }

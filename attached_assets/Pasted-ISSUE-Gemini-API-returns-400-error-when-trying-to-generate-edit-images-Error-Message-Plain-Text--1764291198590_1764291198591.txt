@@ -1,0 +1,379 @@
+ISSUE: Gemini API returns 400 error when trying to generate/edit images
+
+Error Message:
+
+Plain Text
+
+
+500: {"error":"Failed to edit image with Gemini: Gemini API request failed with status 400: {
+  \"error\": {
+    \"code\": 400,
+    \"message\": \"Model does not support the requested response modalities: image\",
+    \"status\": \"INVALID_ARGUMENT\"
+  }
+}"}
+
+
+Root Cause: The current implementation is incorrectly using responseModalities: ['image'] configuration, which is NOT supported by gemini-2.5-flash-image model. This configuration is only needed for advanced models like gemini-3-pro-image-preview.
+
+GOAL: Fix the Gemini API integration to properly generate and edit images using the correct API format for gemini-2.5-flash-image model.
+
+STRATEGY: Update server/gemini.ts to use the correct API structure without responseModalities configuration, following the official Gemini API documentation for image generation.
+
+═══════════════════════════════════════════════════════════════════════ IMPLEMENTATION INSTRUCTIONS: ═══════════════════════════════════════════════════════════════════════
+
+FILE TO MODIFY: server/gemini.ts
+
+CRITICAL FIX: Remove responseModalities Configuration
+
+The gemini-2.5-flash-image model does NOT require (and does not support) the responseModalities configuration. This is only needed for gemini-3-pro-image-preview.
+
+TASK 1: Replace Entire server/gemini.ts File
+
+TypeScript
+
+
+import { GoogleGenAI } from "@google/genai";
+
+const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY is not set in environment variables");
+}
+
+// Initialize Google AI Studio client
+const ai = new GoogleGenAI({
+  apiKey: apiKey
+});
+
+interface GeminiParams {
+  imageUrl: string;
+  prompt: string;
+}
+
+export interface ImageEditResult {
+  imageData: string;
+  mimeType: string;
+}
+
+/**
+ * Convert image URL to base64
+ */
+async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  console.log(`[Gemini] Fetching image from URL: ${url}`);
+  
+  let base64Data: string;
+  let mimeType: string;
+
+  if (url.startsWith("data:")) {
+    // Handle data URL
+    const matches = url.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      throw new Error("Invalid data URL format");
+    }
+    mimeType = matches[1];
+    base64Data = matches[2];
+  } else {
+    // Fetch from HTTP URL
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    
+    mimeType = response.headers.get("content-type") || "image/jpeg";
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    base64Data = buffer.toString("base64");
+  }
+
+  console.log(`[Gemini] Image converted to base64, mimeType: ${mimeType}`);
+  return { base64: base64Data, mimeType };
+}
+
+/**
+ * Edit image using Gemini 2.5 Flash Image model
+ */
+export async function editImageWithGemini(params: GeminiParams): Promise<ImageEditResult> {
+  const { imageUrl, prompt } = params;
+
+  console.log('[Gemini] Starting image edit request');
+  console.log('[Gemini] Prompt:', prompt);
+
+  try {
+    // Convert image to base64
+    const { base64, mimeType } = await urlToBase64(imageUrl);
+
+    // Prepare the prompt with image
+    // IMPORTANT: This is the correct format for gemini-2.5-flash-image
+    const contents = [
+      { text: prompt },
+      {
+        inlineData: {
+          mimeType: mimeType,
+          data: base64,
+        },
+      },
+    ];
+
+    console.log('[Gemini] Sending request to Gemini API...');
+
+    // Make API request
+    // CRITICAL: Do NOT use responseModalities for gemini-2.5-flash-image
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: contents,
+    });
+
+    console.log('[Gemini] Response received');
+
+    // Extract image from response
+    if (response.candidates && response.candidates.length > 0) {
+      const candidate = response.candidates[0];
+      
+      if (candidate.content && candidate.content.parts) {
+        for (const part of candidate.content.parts) {
+          // Check for text response
+          if (part.text) {
+            console.log('[Gemini] Text response:', part.text);
+          }
+          
+          // Check for image response
+          if (part.inlineData) {
+            console.log('[Gemini] Image data found in response');
+            
+            const imageData = part.inlineData.data;
+            const responseMimeType = part.inlineData.mimeType || "image/png";
+            
+            return {
+              imageData: imageData,
+              mimeType: responseMimeType,
+            };
+          }
+        }
+      }
+    }
+
+    throw new Error('No image data found in Gemini API response');
+
+  } catch (error: any) {
+    console.error('[Gemini] Error:', error.message);
+    
+    // Handle specific error cases
+    if (error?.message?.includes("quota") || error?.message?.includes("429")) {
+      throw new Error("QUOTA_EXCEEDED: You've reached your API usage limit. Please try again later.");
+    }
+    
+    if (error?.message?.includes("401") || error?.message?.includes("unauthorized")) {
+      throw new Error("INVALID_API_KEY: Authentication failed. Check your GEMINI_API_KEY in Secrets.");
+    }
+    
+    if (error?.message?.includes("403") || error?.message?.includes("forbidden")) {
+      throw new Error("API_ACCESS_DENIED: Access denied. Verify your API key has image generation permissions.");
+    }
+
+    if (error?.message?.includes("404")) {
+      throw new Error("MODEL_NOT_FOUND: The gemini-2.5-flash-image model was not found. Check if it's available in your region.");
+    }
+
+    if (error?.message?.includes("400") && error?.message?.includes("modalities")) {
+      throw new Error("INVALID_REQUEST: The model configuration is incorrect. This error should not occur with the fixed code.");
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Gemini API Error: ${errorMessage}`);
+  }
+}
+
+
+Key Changes Explained:
+
+❌ OLD CODE (INCORRECT):
+
+TypeScript
+
+
+const response = await ai.models.generateContent({
+  model: "gemini-2.5-flash-image",
+  contents: promptContent,
+  config: {
+    responseModalities: ['image'], // ← THIS CAUSES THE ERROR!
+  }
+});
+
+
+✅ NEW CODE (CORRECT):
+
+TypeScript
+
+
+const response = await ai.models.generateContent({
+  model: "gemini-2.5-flash-image",
+  contents: contents, // ← Array with text and image
+  // NO config, NO responseModalities!
+});
+
+
+Why This Fixes the Error:
+
+1.
+gemini-2.5-flash-image does NOT support responseModalities
+
+•
+This configuration is only for gemini-3-pro-image-preview
+
+•
+Using it causes the 400 error
+
+
+
+2.
+Correct prompt format
+
+•
+Array with { text: prompt } and { inlineData: {...} }
+
+•
+Model automatically returns image in inlineData
+
+
+
+3.
+Proper response parsing
+
+•
+Check response.candidates[0].content.parts
+
+•
+Look for part.inlineData (contains image)
+
+•
+Look for part.text (contains description)
+
+
+
+Testing the Fix:
+
+TASK 2: Test the API
+
+1.
+Make sure GEMINI_API_KEY is set in Replit Secrets
+
+2.
+Upload an image in the editor
+
+3.
+Enter a prompt like: "Make the sky more dramatic with sunset colors"
+
+4.
+Click "Generate"
+
+5.
+Verify:
+
+•
+✅ No 400 error
+
+•
+✅ Image is generated successfully
+
+•
+✅ Console shows "[Gemini] Image data found in response"
+
+
+
+═══════════════════════════════════════════════════════════════════════ OPTIONAL: Advanced Configuration (Gemini 3 Pro Image) ═══════════════════════════════════════════════════════════════════════
+
+If you want to use the more advanced gemini-3-pro-image-preview model in the future, here's how:
+
+TypeScript
+
+
+// For Gemini 3 Pro Image (advanced features)
+const chat = ai.chats.create({
+  model: "gemini-3-pro-image-preview",
+  config: {
+    responseModalities: ['TEXT', 'IMAGE'], // ← Required for Gemini 3
+    tools: [{googleSearch: {}}], // Optional: enable Google Search
+  },
+});
+
+const response = await chat.sendMessage({
+  message: prompt,
+  // Can include images here too
+});
+
+
+Gemini 3 Pro Image Features:
+
+•
+Up to 4K resolution
+
+•
+Google Search grounding
+
+•
+Multi-turn conversations
+
+•
+Up to 14 reference images
+
+•
+Thinking process (reasoning)
+
+But for now, stick with gemini-2.5-flash-image - it's faster and simpler!
+
+═══════════════════════════════════════════════════════════════════════ TESTING CHECKLIST: ═══════════════════════════════════════════════════════════════════════
+
+1.
+✅ Replace server/gemini.ts with the new code
+
+2.
+✅ Verify GEMINI_API_KEY is set in Secrets
+
+3.
+✅ Restart the application
+
+4.
+✅ Upload a test image
+
+5.
+✅ Try prompt: "Add warm golden hour tones"
+
+6.
+✅ Verify no 400 error
+
+7.
+✅ Verify image is generated
+
+8.
+✅ Check console logs for success messages
+
+9.
+✅ Try different prompts (sunset, dramatic sky, etc.)
+
+10.
+✅ Test with different image formats (PNG, JPG)
+
+═══════════════════════════════════════════════════════════════════════ SUMMARY: ═══════════════════════════════════════════════════════════════════════
+
+Problem: 400 error "Model does not support the requested response modalities: image"
+
+Solution: Remove responseModalities configuration - it's not needed for gemini-2.5-flash-image
+
+Key Fix:
+
+TypeScript
+
+
+// ❌ Don't do this:
+config: { responseModalities: ['image'] }
+
+// ✅ Do this:
+// (no config at all)
+
+
+Result: Image generation and editing will work correctly with Gemini API!
+
+
+
+
