@@ -50,6 +50,7 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("projects_user_id_idx").on(table.userId),
+  index("projects_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
 ]);
 
 export const insertProjectSchema = createInsertSchema(projects).omit({
@@ -79,6 +80,8 @@ export const images = pgTable("images", {
   index("images_user_id_idx").on(table.userId),
   index("images_project_id_idx").on(table.projectId),
   index("images_parent_id_idx").on(table.parentImageId),
+  index("images_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
+  index("images_project_id_created_at_idx").on(table.projectId, table.createdAt.desc()),
 ]);
 
 export const insertImageSchema = createInsertSchema(images).omit({
@@ -103,6 +106,8 @@ export const edits = pgTable("edits", {
   index("edits_image_id_idx").on(table.imageId),
   index("edits_user_id_idx").on(table.userId),
   index("edits_saved_image_id_idx").on(table.savedImageId),
+  index("edits_image_id_created_at_idx").on(table.imageId, table.createdAt.desc()),
+  index("edits_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
 ]);
 
 export const insertEditSchema = createInsertSchema(edits).omit({
