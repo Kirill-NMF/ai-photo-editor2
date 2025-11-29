@@ -70,6 +70,7 @@ export const images = pgTable("images", {
   isOriginal: integer("is_original").notNull().default(1),
   originalUrl: text("original_url").notNull(),
   currentUrl: text("current_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
   fileName: varchar("file_name").notNull(),
   fileSize: integer("file_size").notNull(),
   width: integer("width").notNull(),

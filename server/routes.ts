@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
 import { editImageWithHuggingFace } from "./huggingface";
+import { thumbnailGenerator } from "./thumbnailGenerator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -93,6 +94,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
 
+      // Generate WebP thumbnail (skip for now to avoid breaking uploads)
+      let thumbnailUrl: string | null = null;
+
       // Create a new project for this image
       const project = await storage.createProject({
         userId,
@@ -105,6 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         projectId: project.id,
         originalUrl: objectPath,
         currentUrl: objectPath,
+        thumbnailUrl,
         fileName: validatedData.fileName,
         fileSize: validatedData.fileSize,
         width: validatedData.width,
@@ -408,8 +413,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Forbidden" });
       }
 
-      // Save the edit as an image
-      const savedImage = await storage.saveEditAsImage(edit, parentImage, overwriteLastSave);
+      // Save the edit as an image  
+      let savedImage = await storage.saveEditAsImage(edit, parentImage, overwriteLastSave);
 
       res.status(201).json({
         image: savedImage,
@@ -648,4 +653,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   return httpServer;
+}
+
+function extractUploadId(url: string): string {
+  const uploadsMatch = url.match(/\/uploads\/([^\/]+)/);
+  if (uploadsMatch) {
+    return uploadsMatch[1];
+  }
+  
+  const editsMatch = url.match(/\/edits\/([^\/]+)/);
+  if (editsMatch) {
+    return editsMatch[1];
+  }
+  
+  const uuidMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  if (uuidMatch) {
+    return uuidMatch[1];
+  }
+  
+  throw new Error(`Invalid upload URL format: ${url}`);
 }
