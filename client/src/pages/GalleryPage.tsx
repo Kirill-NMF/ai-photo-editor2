@@ -109,11 +109,12 @@ export default function GalleryPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              {currentProjects.map((project) => (
+              {currentProjects.map((project, index) => (
                 <ProjectCard
                   key={project.id}
                   project={project}
                   onOpenProject={() => setSelectedProjectId(project.id)}
+                  isAboveFold={index < 3}
                 />
               ))}
             </div>

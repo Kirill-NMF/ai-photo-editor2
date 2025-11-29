@@ -162,6 +162,7 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                       src={project.originalImage.currentUrl}
                       alt="Original"
                       className="w-full h-full object-contain"
+                      loading="lazy"
                       data-testid="img-original"
                     />
                   </div>
@@ -199,6 +200,7 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                           src={image.currentUrl}
                           alt={image.fileName}
                           className="w-full h-full object-contain"
+                          loading="lazy"
                           data-testid={`img-saved-${image.id}`}
                         />
                       </div>
@@ -245,6 +247,7 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                           src={edit.resultUrl}
                           alt={edit.prompt}
                           className="w-full h-full object-contain"
+                          loading="lazy"
                           data-testid={`img-edit-${edit.id}`}
                         />
                       </div>
