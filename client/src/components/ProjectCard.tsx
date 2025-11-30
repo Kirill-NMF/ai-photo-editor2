@@ -13,7 +13,7 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ project, onOpenProject, isAboveFold = false }: ProjectCardProps) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const thumbnailUrl = project.originalImage?.thumbnailUrl || project.originalImage?.currentUrl || "";
+  const thumbnailUrl = project.originalImage?.currentUrl || "";
   const projectName = project.name || `Project #${project.id}`;
 
   return (

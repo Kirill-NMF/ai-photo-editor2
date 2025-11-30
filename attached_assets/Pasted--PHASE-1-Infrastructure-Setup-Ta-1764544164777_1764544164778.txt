@@ -1,0 +1,122 @@
+📋 Правильная разбивка на подзадачи
+PHASE 1: Infrastructure Setup (без кода, только подготовка)
+Task 1.1: Install Sharp Library
+Plain Text
+GOAL: Install Sharp package for WebP image processing
+ACTION: npm install sharp @types/sharp
+TEST: Check package.json has "sharp" dependency
+TIME: 2 minutes
+RISK: Zero
+Task 1.2: Add Database Column
+Plain Text
+GOAL: Add thumbnailUrl column to images table
+FILE: shared/schema.ts
+CHANGE: Add line: thumbnailUrl: text("thumbnail_url"),
+ACTION: npm run db:push
+TEST: Query DB to verify column exists
+TIME: 3 minutes
+RISK: Zero (additive change)
+PHASE 2: Core Utility (изолированный код, без интеграции)
+Task 2.1: Create ThumbnailGenerator Class
+Plain Text
+GOAL: Create utility class for WebP thumbnail generation
+FILE: server/thumbnailGenerator.ts (NEW)
+CODE: Full ThumbnailGenerator class (200 lines)
+TEST: Import class, verify no syntax errors
+TIME: 10 minutes
+RISK: Zero (не используется нигде пока)
+Task 2.2: Create Helper Function
+Plain Text
+GOAL: Create generateThumbnailInBackground() helper
+FILE: server/thumbnailHelpers.ts (NEW)
+CODE:
+  - async function generateThumbnailInBackground(imageId, originalUrl)
+  - Calls ThumbnailGenerator
+  - Updates DB with thumbnailUrl
+  - Catches errors, logs them
+TEST: Call manually from console, verify it works
+TIME: 10 minutes
+RISK: Zero (не интегрировано в upload flow)
+PHASE 3: Manual Endpoint (тестирование перед автоматизацией)
+Task 3.1: Create Admin Endpoint
+Plain Text
+GOAL: Create POST /api/admin/generate-thumbnails endpoint
+FILE: server/routes.ts
+CODE:
+  - Find images WHERE thumbnailUrl IS NULL
+  - Call generateThumbnailInBackground() for each
+  - Return statistics
+TEST: curl -X POST http://localhost:5000/api/admin/generate-thumbnails
+TIME: 15 minutes
+RISK: Low (isolated endpoint, не влияет на upload )
+Task 3.2: Test Manual Generation
+Plain Text
+GOAL: Verify thumbnail generation works end-to-end
+ACTION:
+  1. Upload test image
+  2. Call admin endpoint
+  3. Check DB: thumbnailUrl populated
+  4. Check GCS: thumb.webp exists
+  5. Verify file size ~25 KB
+TEST: Manual verification
+TIME: 10 minutes
+RISK: Zero (testing only)
+PHASE 4: Gallery Integration (UI, не влияет на backend)
+Task 4.1: Update ProjectCard Component
+Plain Text
+GOAL: Add fallback logic to use thumbnails when available
+FILE: client/src/components/ProjectCard.tsx
+CHANGE: src={thumbnailUrl || currentUrl}
+TEST: Gallery shows images (thumbnails or originals)
+TIME: 5 minutes
+RISK: Zero (fallback ensures images always show)
+Task 4.2: Test Gallery Display
+Plain Text
+GOAL: Verify gallery shows thumbnails correctly
+ACTION:
+  1. Open gallery
+  2. Check DevTools Network tab
+  3. Verify images with thumbnails load ~25 KB
+  4. Verify images without thumbnails load original
+TEST: Visual + Network inspection
+TIME: 5 minutes
+RISK: Zero (testing only)
+PHASE 5: Automatic Generation (финальная интеграция)
+Task 5.1: Integrate into Upload Flow
+Plain Text
+GOAL: Add fire-and-forget thumbnail generation to upload
+FILE: server/routes.ts (POST /api/images endpoint)
+CHANGE: After createImage(), add:
+  generateThumbnailInBackground(image.id, image.originalUrl)
+    .catch(err => console.error('[Thumbnail]', err));
+TEST: Upload image, check logs, verify thumbnail generated
+TIME: 10 minutes
+RISK: LOW (async, doesn't block response)
+Task 5.2: Test Upload Flow
+Plain Text
+GOAL: Verify upload works with automatic thumbnail generation
+ACTION:
+  1. Upload new image
+  2. Check response (should be fast, ~1 second)
+  3. Wait 5 seconds
+  4. Check DB: thumbnailUrl populated
+  5. Check logs: "[ThumbnailGenerator] Generated thumbnail"
+TEST: End-to-end upload test
+TIME: 10 minutes
+RISK: Zero (testing only)
+PHASE 6: Edge Cases (опционально, для production)
+Task 6.1: Add Thumbnail Generation to Edit Flow
+Plain Text
+GOAL: Generate thumbnails for AI edit results
+FILE: server/routes.ts (POST /api/edits/:editId/save)
+CHANGE: After saveEditAsImage(), add fire-and-forget generation
+TEST: Edit image, verify thumbnail generated
+TIME: 10 minutes
+RISK: Low (same pattern as upload)
+Task 6.2: Backfill Existing Images
+Plain Text
+GOAL: Generate thumbnails for all existing images
+ACTION: Call admin endpoint multiple times until all processed
+TEST: Check DB: all images have thumbnailUrl
+TIME: 5 minutes (+ generation time)
+RISK: Zero (idempotent operation)
