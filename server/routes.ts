@@ -7,11 +7,12 @@ import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertImageSchema, edits } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { insertImageSchema, edits, images } from "@shared/schema";
+import { eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
 import { editImageWithHuggingFace } from "./huggingface";
+import { generateThumbnailsBatch } from "./thumbnailHelpers";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -642,6 +643,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Migration failed:", error);
       res.status(500).json({ error: "Migration failed" });
+    }
+  });
+
+  /**
+   * Admin endpoint: Generate thumbnails for images that don't have them
+   * Processes up to 10 images per request to avoid overwhelming the system
+   * Can be called multiple times to process all images
+   */
+  app.post("/api/admin/generate-thumbnails", async (req, res) => {
+    try {
+      console.log('[Admin] Manual thumbnail generation triggered');
+
+      // Find images without thumbnails (limit to avoid overwhelming system)
+      const imagesToProcess = await db
+        .select({
+          id: images.id,
+          originalUrl: images.originalUrl,
+        })
+        .from(images)
+        .where(isNull(images.thumbnailUrl))
+        .limit(10);
+
+      if (imagesToProcess.length === 0) {
+        console.log('[Admin] No images to process. All thumbnails up to date!');
+        return res.json({
+          success: true,
+          message: 'No images to process. All thumbnails up to date!',
+          processed: 0,
+          errors: 0,
+        });
+      }
+
+      console.log(`[Admin] Found ${imagesToProcess.length} images without thumbnails`);
+
+      // Generate thumbnails in batch
+      const stats = await generateThumbnailsBatch(imagesToProcess);
+
+      console.log(`[Admin] Complete! Processed: ${stats.processed}, Errors: ${stats.errors}`);
+
+      res.json({
+        success: true,
+        message: `Processed ${stats.processed} images, ${stats.errors} errors`,
+        processed: stats.processed,
+        errors: stats.errors,
+        remaining: imagesToProcess.length === 10 ? 'More images may need processing' : 'All done',
+      });
+
+    } catch (error) {
+      console.error('[Admin] Error generating thumbnails:', error);
+      res.status(500).json({
+        error: 'Failed to generate thumbnails',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   });
 
