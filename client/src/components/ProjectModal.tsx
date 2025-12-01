@@ -197,7 +197,7 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                     >
                       <div className="aspect-video relative overflow-hidden bg-muted">
                         <img
-                          src={image.currentUrl}
+                          src={image.thumbnailUrl || image.currentUrl}
                           alt={image.fileName}
                           className="w-full h-full object-contain"
                           loading="lazy"
