@@ -530,6 +530,7 @@ export default function EditorPage() {
     {
       id: `original-${uploadedImage.id}`,
       resultUrl: uploadedImage.originalUrl,
+      thumbnailUrl: uploadedImage.thumbnailUrl,
       prompt: 'Original',
       createdAt: uploadedImage.createdAt,
       isSaved: false,
@@ -538,6 +539,7 @@ export default function EditorPage() {
     ...edits.map(edit => ({
       id: edit.id,
       resultUrl: edit.resultUrl,
+      thumbnailUrl: edit.thumbnailUrl,
       prompt: edit.prompt,
       createdAt: edit.createdAt,
       isSaved: edit.isSaved,

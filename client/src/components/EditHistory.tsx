@@ -7,6 +7,7 @@ import { History, Sparkles } from "lucide-react";
 export type HistoryItem = {
   id: number | string;
   resultUrl: string;
+  thumbnailUrl: string | null;
   prompt: string;
   createdAt: Date | null;
   isSaved: boolean;

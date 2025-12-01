@@ -4,6 +4,7 @@ const LAST_ACTIVE_ID_KEY = 'photo_editor_last_active_id';
 export interface CachedEdit {
   id: number;
   resultUrl: string;
+  thumbnailUrl: string | null;
   prompt: string;
   createdAt: Date | null;
   isSaved: boolean;

@@ -36,9 +36,10 @@ export default function EditHistoryItem({
       <div className="flex gap-3">
         <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted/50 border">
           <img 
-            src={item.resultUrl} 
+            src={item.thumbnailUrl || item.resultUrl} 
             alt={item.isOriginal ? "Original image" : "Edit preview"}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         </div>
         
