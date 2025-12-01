@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "wouter";
 import type { UploadResult } from "@uppy/core";
 import UploadZone from "@/components/UploadZone";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { ObjectUploader, type ObjectUploaderRef } from "@/components/ObjectUploader";
 import ImageCanvas from "@/components/ImageCanvas";
 import EditHistory, { type HistoryItem } from "@/components/EditHistory";
 import PromptSuggestions from "@/components/PromptSuggestions";
@@ -45,10 +45,12 @@ export default function EditorPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [showQuickSuggestions, setShowQuickSuggestions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   
   const hasAttemptedRestore = useRef(false);
   const currentRestoreToken = useRef<number>(0);
   const isInitializing = useRef(true); // Prevent cache saves during initial load
+  const uploaderRef = useRef<ObjectUploaderRef>(null);
 
   // Keep refs in sync with state for debounced saves
   const uploadedImageRef = useRef(uploadedImage);
@@ -535,6 +537,82 @@ export default function EditorPage() {
     console.log('[EditorPage] Suggestion selected:', suggestionText);
   };
 
+  // Drag-and-drop handlers for upload zone
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    const file = files[0];
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload JPEG, PNG, or WebP images only",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (20MB)
+    const maxSize = 20 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 20MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Use ObjectUploader's uppy instance for consistent upload flow
+    try {
+      const uppy = uploaderRef.current?.uppy;
+      if (!uppy) {
+        throw new Error("Uploader not initialized");
+      }
+
+      // Add file to uppy
+      uppy.addFile({
+        name: file.name,
+        type: file.type,
+        data: file,
+      });
+
+      // Start upload - onComplete handler will be called automatically
+      await uppy.upload();
+    } catch (error) {
+      console.error("Error uploading via drag-and-drop:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Build combined history array with original image first
   const historyItems: HistoryItem[] = uploadedImage ? [
     {
@@ -567,21 +645,30 @@ export default function EditorPage() {
               Upload an image to begin your AI-powered transformation
             </p>
           </div>
-          <div className="flex justify-center">
+          <div 
+            className="flex justify-center"
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <ObjectUploader
+              ref={uploaderRef}
               maxNumberOfFiles={1}
               maxFileSize={20 * 1024 * 1024}
               onGetUploadParameters={handleGetUploadParameters}
               onComplete={handleUploadComplete}
-              buttonClassName="h-72 w-full max-w-2xl border-2 border-dashed rounded-lg hover-elevate active-elevate-2 transition-all duration-200"
+              buttonClassName={`h-72 w-full max-w-2xl border-2 border-dashed rounded-lg hover-elevate active-elevate-2 transition-all duration-200 ${isDragging ? 'border-primary bg-primary/5' : ''}`}
             >
               <div className="flex flex-col items-center gap-6">
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
                   <UploadIcon className="h-10 w-10 text-primary" />
                 </div>
                 <div className="space-y-2 text-center">
-                  <p className="text-xl font-semibold">Click to upload an image</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xl font-semibold">
+                    {isDragging ? 'Drop image here' : 'Click to upload an image'}
+                  </p>
+                  <p className="text-sm" style={{ color: '#cecece' }}>
                     Supports JPEG, PNG, WebP (max 20MB)
                   </p>
                 </div>

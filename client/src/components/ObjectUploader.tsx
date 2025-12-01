@@ -1,5 +1,5 @@
 // Integration: Object Storage (blueprint:javascript_object_storage)
-import { useState, useEffect } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
 import DashboardModal from "@uppy/react/dashboard-modal";
@@ -23,14 +23,18 @@ interface ObjectUploaderProps {
   children: ReactNode;
 }
 
-export function ObjectUploader({
+export interface ObjectUploaderRef {
+  uppy: Uppy;
+}
+
+export const ObjectUploader = forwardRef<ObjectUploaderRef, ObjectUploaderProps>(({
   maxNumberOfFiles = 1,
   maxFileSize = 10485760,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
   children,
-}: ObjectUploaderProps) {
+}, ref) => {
   const [showModal, setShowModal] = useState(false);
   const [uppy] = useState(() =>
     new Uppy({
@@ -49,6 +53,10 @@ export function ObjectUploader({
       })
   );
 
+  // Expose uppy instance to parent
+  useImperativeHandle(ref, () => ({
+    uppy,
+  }));
 
   return (
     <div>
@@ -64,4 +72,4 @@ export function ObjectUploader({
       />
     </div>
   );
-}
+});
