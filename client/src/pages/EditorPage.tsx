@@ -698,7 +698,7 @@ export default function EditorPage() {
                 </div>
                 <div className="space-y-2 text-center">
                   <p className="text-xl font-semibold">
-                    Click to upload an image
+                    Click or drag'n'drop to upload an image
                   </p>
                   <p className="text-sm" style={{ color: '#cecece' }}>
                     Supports JPEG, PNG, WebP (max 20MB)
