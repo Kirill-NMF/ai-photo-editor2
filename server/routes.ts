@@ -136,6 +136,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         height: validatedData.height,
       });
 
+      // Generate thumbnail in background (don't await - let it complete async)
+      generateThumbnailInBackground(image.id, image.originalUrl).catch(err => {
+        console.error(`[Upload] Failed to generate thumbnail for image ${image.id}:`, err);
+      });
+
       res.status(201).json(image);
     } catch (error) {
       if (error instanceof z.ZodError) {
