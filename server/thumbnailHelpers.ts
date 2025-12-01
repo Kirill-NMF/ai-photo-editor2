@@ -33,14 +33,21 @@ export async function generateThumbnailInBackground(
 
     // Generate WebP thumbnail
     const startTime = Date.now();
-    const thumbnailUrl = await thumbnailGenerator.generateUploadThumbnail(
+    const gcsPath = await thumbnailGenerator.generateUploadThumbnail(
       originalFile,
       uploadId,
       privateObjectDir
     );
     const duration = Date.now() - startTime;
     
-    console.log(`[ThumbnailBG] Thumbnail generated in ${duration}ms: ${thumbnailUrl}`);
+    console.log(`[ThumbnailBG] Thumbnail generated in ${duration}ms: ${gcsPath}`);
+
+    // Convert GCS path to /objects/ path for frontend
+    // GCS:     /replit-objstore-xxx/.private/uploads/abc-123/thumb.webp
+    // Objects: /objects/uploads/abc-123/thumb.webp
+    const thumbnailUrl = `/objects/uploads/${uploadId}/thumb.webp`;
+    
+    console.log(`[ThumbnailBG] Saving to DB: ${thumbnailUrl}`);
 
     // Update database with thumbnail URL
     await db

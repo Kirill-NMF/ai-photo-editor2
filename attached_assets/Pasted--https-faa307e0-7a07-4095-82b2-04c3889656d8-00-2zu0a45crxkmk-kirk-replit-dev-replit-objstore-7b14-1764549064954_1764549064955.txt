@@ -1,0 +1,67 @@
+
+https://faa307e0-7a07-4095-82b2-04c3889656d8-00-2zu0a45crxkmk.kirk.replit.dev/replit-objstore-7b144eb9-980e-4280-ac9f-e35ef4f802c7/.private/uploads/b4a1c09e-730b-4e9d-8b37-c914b662a2e2/thumb.webp
+Request Method
+GET
+Status Code
+200 OK
+Remote Address
+45.132.79.100:8000
+Referrer Policy
+strict-origin-when-cross-origin
+content-type
+text/html; charset=utf-8
+date
+Mon, 01 Dec 2025 00:28:45 GMT
+replit-cluster
+kirk
+transfer-encoding
+chunked
+vary
+Origin
+x-powered-by
+Express
+x-robots-tag
+none, noindex, noarchive, nofollow, nositelinkssearchbox, noimageindex
+x-robots-tag
+none, noindex, noarchive, nofollow, nositelinkssearchbox, noimageindex
+accept
+image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7
+connection
+keep-alive
+cookie
+connect.sid=s%3A24utkH1RDi8Ry6MoZ31afEtgpsXcnD4u.kiI9Iq4HS8A6MBmCHkjcgdyKrNazQU4Vy%2FvcUtfWYFY
+host
+faa307e0-7a07-4095-82b2-04c3889656d8-00-2zu0a45crxkmk.kirk.replit.dev
+referer
+https://faa307e0-7a07-4095-82b2-04c3889656d8-00-2zu0a45crxkmk.kirk.replit.dev/gallery
+sec-ch-ua
+"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"
+sec-ch-ua-mobile
+?0
+sec-ch-ua-platform
+"Windows"
+sec-fetch-dest
+image
+sec-fetch-mode
+no-cors
+sec-fetch-site
+same-origin
+sec-fetch-storage-access
+active
+user-agent
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+Full stack trace AI agent in Performance panel
+The Performance panel now integrates a more capable AI agent that has full access to the stack trace.
+
+AI code completion in Sources and Console
+Code completion powered by AI is now available in the Sources panel and the Console.
+
+Google Developer Program support
+The Google Developer Program, a ready-made subscription and community platform, is now in DevTools, offering a more personalized experience, a badge system, and easier discovery of new features.
+
+One main 'Debug with AI' button
+The primary action bar at the top of DevTools now features the primary "Debug with AI" button which opens the 'AI assistance' panel in a right-hand side bar.
