@@ -638,20 +638,20 @@ export default function EditorPage() {
   if (!uploadedImage) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-        <div className="w-full max-w-3xl space-y-12">
+        <div 
+          className="w-full max-w-3xl space-y-12"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold tracking-tight">Start Editing</h1>
             <p className="text-lg text-muted-foreground">
               Upload an image to begin your AI-powered transformation
             </p>
           </div>
-          <div 
-            className="flex justify-center"
-            onDragEnter={handleDragEnter}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
+          <div className="flex justify-center">
             <ObjectUploader
               ref={uploaderRef}
               maxNumberOfFiles={1}
