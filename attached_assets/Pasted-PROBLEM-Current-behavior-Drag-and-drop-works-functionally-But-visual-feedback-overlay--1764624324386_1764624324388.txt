@@ -1,0 +1,599 @@
+PROBLEM
+
+Current behavior:
+
+•
+Drag-and-drop works functionally ✅
+
+•
+But visual feedback (overlay + "Drop image here" text) appears only in a narrow zone
+
+•
+User doesn't understand where they can drop the file
+
+•
+Confusing UX - looks like it won't work, but actually works
+
+User feedback:
+
+
+"Надпись 'drop image here' при наведении файла появляется только в узкой зоне, такое ощущение со стороны юзера как будто не сработает, но в итоге все работает"
+
+
+
+
+GOAL
+
+Make visual feedback persistent and clear:
+
+•
+✅ Overlay + text should appear when file is really over drop zone
+
+•
+✅ Should NOT disappear while file is still over droppable area
+
+•
+✅ Drop zone = entire blue area with button (not just button itself)
+
+
+
+
+REQUIREMENTS
+
+1. Drop Zone Size:
+
+•
+Target: Entire blue container with "Click to upload an image" button
+
+•
+NOT: Just the button itself
+
+•
+NOT: Entire page
+
+2. Visual Feedback:
+
+•
+Type: Overlay (semi-transparent layer)
+
+•
+When: File is really over drop zone
+
+•
+Should include:
+
+•
+Semi-transparent background (e.g., rgba(59, 130, 246, 0.1))
+
+•
+Border highlight (e.g., 2px dashed #3b82f6)
+
+•
+Text: "Drop image here"
+
+
+
+3. Text "Drop image here":
+
+•
+When: File is really over drop zone
+
+•
+Where: Center of the blue container
+
+•
+Should NOT disappear while file is over droppable area
+
+
+
+
+CURRENT IMPLEMENTATION ISSUE
+
+Problem in code:
+
+TSX
+
+
+// Current: Handlers only on small div
+<div
+  onDragOver={handleDragOver}
+  onDragEnter={handleDragEnter}
+  onDragLeave={handleDragLeave}  // ← Fires when moving over child elements!
+  onDrop={handleDrop}
+>
+  <ObjectUploader ... />  // ← Child element
+</div>
+
+
+Issue: onDragLeave fires when cursor moves from parent to child element, causing flickering.
+
+Solution: Use relatedTarget to check if we're still inside drop zone.
+
+
+
+
+IMPLEMENTATION
+
+Step 1: Fix drag event handlers
+
+File: client/src/pages/EditorPage.tsx
+
+Find current handlers (around line 150-180):
+
+TypeScript
+
+
+const handleDragEnter = (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setIsDragging(true);
+};
+
+const handleDragLeave = (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setIsDragging(false);  // ← Problem: fires on child elements!
+};
+
+
+Replace with improved handlers:
+
+TypeScript
+
+
+const [isDragging, setIsDragging] = useState(false);
+const dropZoneRef = useRef<HTMLDivElement>(null);
+
+const handleDragEnter = (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // Only set dragging if we have files
+  if (e.dataTransfer.types.includes('Files')) {
+    setIsDragging(true);
+  }
+};
+
+const handleDragOver = (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // Keep dragging state active while over drop zone
+  if (e.dataTransfer.types.includes('Files')) {
+    setIsDragging(true);
+  }
+};
+
+const handleDragLeave = (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // Only hide overlay if we're leaving the drop zone entirely
+  // Check if relatedTarget is outside drop zone
+  const relatedTarget = e.relatedTarget as Node;
+  
+  if (dropZoneRef.current && !dropZoneRef.current.contains(relatedTarget)) {
+    setIsDragging(false);
+  }
+};
+
+const handleDrop = async (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setIsDragging(false);  // Hide overlay immediately on drop
+  
+  // ... existing drop logic
+};
+
+
+Key changes:
+
+1.
+Added dropZoneRef to track drop zone container
+
+2.
+Check e.dataTransfer.types.includes('Files') to ensure we have files
+
+3.
+In handleDragLeave, check if relatedTarget is outside drop zone
+
+4.
+In handleDragOver, keep isDragging active (prevents flickering)
+
+
+
+
+Step 2: Improve drop zone container
+
+File: client/src/pages/EditorPage.tsx
+
+Find the drop zone container (around line 570-590):
+
+TSX
+
+
+<div
+  className="flex flex-col items-center justify-center min-h-[60vh]"
+  onDragOver={handleDragOver}
+  onDragEnter={handleDragEnter}
+  onDragLeave={handleDragLeave}
+  onDrop={handleDrop}
+>
+  {/* ObjectUploader */}
+</div>
+
+
+Replace with improved container:
+
+TSX
+
+
+<div
+  ref={dropZoneRef}
+  className={`
+    relative flex flex-col items-center justify-center min-h-[60vh]
+    transition-all duration-200
+    ${isDragging ? 'bg-blue-50' : ''}
+  `}
+  onDragOver={handleDragOver}
+  onDragEnter={handleDragEnter}
+  onDragLeave={handleDragLeave}
+  onDrop={handleDrop}
+>
+  {/* Overlay when dragging */}
+  {isDragging && (
+    <div className="absolute inset-0 flex items-center justify-center bg-blue-500/10 border-2 border-dashed border-blue-500 rounded-lg pointer-events-none z-10">
+      <div className="text-center">
+        <div className="text-2xl font-semibold text-blue-600 mb-2">
+          Drop image here
+        </div>
+        <div className="text-sm text-gray-500">
+          Release to upload
+        </div>
+      </div>
+    </div>
+  )}
+  
+  {/* ObjectUploader (existing) */}
+  <ObjectUploader
+    ref={uploaderRef}
+    onUploadSuccess={handleUploadSuccess}
+    onUploadError={handleUploadError}
+    maxFileSize={20 * 1024 * 1024}
+    allowedFileTypes={['image/jpeg', 'image/png', 'image/webp']}
+  />
+</div>
+
+
+Key changes:
+
+1.
+Added ref={dropZoneRef} to track container
+
+2.
+Added relative class for overlay positioning
+
+3.
+Added overlay with:
+
+•
+absolute inset-0 - covers entire drop zone
+
+•
+bg-blue-500/10 - semi-transparent blue background
+
+•
+border-2 border-dashed border-blue-500 - dashed border
+
+•
+pointer-events-none - doesn't block drop events
+
+•
+z-10 - appears above content
+
+
+
+4.
+Added "Drop image here" text in center
+
+5.
+Added subtle background change on drag (bg-blue-50)
+
+
+
+
+Step 3: Add useRef import
+
+File: client/src/pages/EditorPage.tsx
+
+Find imports at top:
+
+TypeScript
+
+
+import { useState, useEffect } from 'react';
+
+
+Add useRef:
+
+TypeScript
+
+
+import { useState, useEffect, useRef } from 'react';
+
+
+
+
+
+VISUAL DESIGN
+
+Before (current):
+
+Plain Text
+
+
+┌─────────────────────────────────┐
+│                                 │
+│      Start Editing              │
+│                                 │
+│  ┌──────────────┐               │
+│  │ [Button]     │ ← Overlay only here (narrow!)
+│  └──────────────┘               │
+│                                 │
+│  Supports JPEG...               │
+└─────────────────────────────────┘
+
+
+After (fixed):
+
+Plain Text
+
+
+┌─────────────────────────────────┐
+│ ╔═══════════════════════════╗   │
+│ ║                           ║   │
+│ ║    Start Editing          ║   │
+│ ║                           ║   │ ← Overlay on entire area!
+│ ║  Drop image here          ║   │
+│ ║  Release to upload        ║   │
+│ ║                           ║   │
+│ ║  Supports JPEG...         ║   │
+│ ╚═══════════════════════════╝   │
+└─────────────────────────────────┘
+
+
+
+
+
+TESTING
+
+Test 1: Drag file over page
+
+1.
+Open Editor (no image loaded)
+
+2.
+Drag a file from desktop
+
+3.
+Move cursor over the page
+
+4.
+Expected: No overlay until cursor enters blue zone
+
+Test 2: Drag file over drop zone
+
+1.
+Drag file over the blue "Click to upload" area
+
+2.
+Expected:
+
+•
+Overlay appears immediately
+
+•
+"Drop image here" text visible
+
+•
+Dashed blue border around entire blue area
+
+•
+Semi-transparent blue background
+
+
+
+Test 3: Move cursor inside drop zone
+
+1.
+Drag file over drop zone (overlay appears)
+
+2.
+Move cursor around inside the blue area
+
+3.
+Expected:
+
+•
+Overlay stays visible (no flickering!)
+
+•
+Text stays visible
+
+•
+Border stays visible
+
+
+
+Test 4: Leave drop zone
+
+1.
+Drag file over drop zone (overlay appears)
+
+2.
+Move cursor outside blue area
+
+3.
+Expected:
+
+•
+Overlay disappears
+
+•
+Back to normal state
+
+
+
+Test 5: Drop file
+
+1.
+Drag file over drop zone
+
+2.
+Release mouse button
+
+3.
+Expected:
+
+•
+Overlay disappears immediately
+
+•
+File upload starts
+
+•
+Upload progress shows
+
+
+
+Test 6: Drag non-file content
+
+1.
+Try dragging text or other non-file content
+
+2.
+Expected:
+
+•
+No overlay appears
+
+•
+Drop zone doesn't activate
+
+
+
+
+
+
+SUCCESS CRITERIA
+
+•
+✅ Overlay appears on entire blue container (not just button)
+
+•
+✅ Overlay includes semi-transparent background + dashed border
+
+•
+✅ "Drop image here" text visible in center
+
+•
+✅ No flickering when moving cursor inside drop zone
+
+•
+✅ Overlay disappears only when leaving drop zone entirely
+
+•
+✅ Drop functionality works correctly
+
+•
+✅ Non-file drags don't trigger overlay
+
+•
+✅ Visual feedback is clear and intuitive
+
+
+
+
+TECHNICAL NOTES
+
+Why relatedTarget check?
+
+Problem:
+
+Plain Text
+
+
+User drags file over parent div
+  → onDragEnter fires → isDragging = true ✅
+User moves cursor over child element (button)
+  → onDragLeave fires on parent → isDragging = false ❌
+  → Overlay disappears (flickering!)
+
+
+Solution:
+
+TypeScript
+
+
+const relatedTarget = e.relatedTarget as Node;
+if (dropZoneRef.current && !dropZoneRef.current.contains(relatedTarget)) {
+  // Only hide if we're leaving drop zone entirely
+  setIsDragging(false);
+}
+
+
+Why pointer-events-none on overlay?
+
+•
+Overlay should not block drop events
+
+•
+Without this, drop might not work
+
+•
+Overlay is purely visual feedback
+
+Why check e.dataTransfer.types.includes('Files')?
+
+•
+Prevents overlay from showing when dragging text, links, etc.
+
+•
+Only activate for actual file drops
+
+
+
+
+STYLING REFERENCE
+
+Overlay classes:
+
+TSX
+
+
+className="absolute inset-0 flex items-center justify-center 
+  bg-blue-500/10           // Semi-transparent blue
+  border-2 border-dashed   // Dashed border
+  border-blue-500          // Blue color
+  rounded-lg               // Rounded corners
+  pointer-events-none      // Don't block events
+  z-10"                    // Above content
+
+
+Text classes:
+
+TSX
+
+
+className="text-2xl font-semibold text-blue-600"  // Main text
+className="text-sm text-gray-500"                 // Subtitle
+
+
+
+
+
+Time estimate: 15 minutes
+Risk: Low (visual-only changes, functionality already works)
+Dependencies: Existing drag-and-drop implementation
+Result: Clear, intuitive drag-and-drop UX!
+

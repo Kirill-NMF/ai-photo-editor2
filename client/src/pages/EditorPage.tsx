@@ -51,6 +51,7 @@ export default function EditorPage() {
   const currentRestoreToken = useRef<number>(0);
   const isInitializing = useRef(true); // Prevent cache saves during initial load
   const uploaderRef = useRef<ObjectUploaderRef>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   // Keep refs in sync with state for debounced saves
   const uploadedImageRef = useRef(uploadedImage);
@@ -541,18 +542,34 @@ export default function EditorPage() {
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    
+    // Only set dragging if we have files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Keep dragging state active while over drop zone (prevents flickering)
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    
+    // Only hide overlay if we're leaving the drop zone entirely
+    // Check if relatedTarget is outside drop zone
+    const relatedTarget = e.relatedTarget as Node;
+    
+    if (dropZoneRef.current && !dropZoneRef.current.contains(relatedTarget)) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -639,12 +656,27 @@ export default function EditorPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">
         <div 
-          className="w-full max-w-3xl space-y-12"
+          ref={dropZoneRef}
+          className="relative w-full max-w-3xl space-y-12"
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
+          {/* Overlay when dragging */}
+          {isDragging && (
+            <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg pointer-events-none z-10">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary mb-2">
+                  Drop image here
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Release to upload
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold tracking-tight">Start Editing</h1>
             <p className="text-lg text-muted-foreground">
@@ -666,7 +698,7 @@ export default function EditorPage() {
                 </div>
                 <div className="space-y-2 text-center">
                   <p className="text-xl font-semibold">
-                    {isDragging ? 'Drop image here' : 'Click to upload an image'}
+                    Click to upload an image
                   </p>
                   <p className="text-sm" style={{ color: '#cecece' }}>
                     Supports JPEG, PNG, WebP (max 20MB)
