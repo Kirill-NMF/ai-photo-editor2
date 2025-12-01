@@ -395,6 +395,19 @@ export default function EditorPage() {
         title: "Edit complete!",
         description: "Your image has been edited successfully",
       });
+
+      // Auto-refetch edits after 2 seconds to get generated thumbnail
+      // Background worker needs time to generate and save thumbnailUrl to DB
+      setTimeout(async () => {
+        try {
+          console.log('[EditorPage] Refetching edits to get generated thumbnails');
+          const freshEdits = await fetchEditHistory(uploadedImage.id);
+          setEdits(freshEdits);
+        } catch (error) {
+          console.error('[EditorPage] Failed to refetch edits:', error);
+          // Silent fail - user won't notice, will get thumbnail on next page load
+        }
+      }, 2000);
     } catch (error) {
       console.error('Error generating edit:', error);
       
