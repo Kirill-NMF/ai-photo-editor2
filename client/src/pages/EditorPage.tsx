@@ -528,12 +528,9 @@ export default function EditorPage() {
     debouncedSaveRef.current();
   };
 
-  // Handle suggestion click - append to prompt
+  // Handle suggestion click - replace prompt
   const handleSuggestionSelect = (suggestionText: string) => {
-    const newText = promptText.trim()
-      ? `${promptText} ${suggestionText}`
-      : suggestionText;
-    setPromptText(newText);
+    setPromptText(suggestionText);
     debouncedSaveRef.current();
     console.log('[EditorPage] Suggestion selected:', suggestionText);
   };
