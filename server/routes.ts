@@ -30,6 +30,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint for thumbnails (checks ACL, no auth required)
+  // Must be BEFORE the main /objects/* route to match first
+  app.get("/objects/uploads/:uploadId/thumb.webp", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const thumbPath = `/objects/uploads/${req.params.uploadId}/thumb.webp`;
+      const objectFile = await objectStorageService.getObjectEntityFile(thumbPath);
+      
+      // Check if thumbnail is public via ACL policy
+      const aclPolicy = await objectStorageService.getObjectAclPolicy(thumbPath);
+      if (aclPolicy?.visibility !== "public") {
+        return res.sendStatus(401);
+      }
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving thumbnail:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
   // Object Storage - Serve private objects with ACL check
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     const userId = req.user?.claims?.sub;
