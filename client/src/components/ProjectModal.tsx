@@ -136,18 +136,8 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-project-modal">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>{project.name || `Project #${project.id}`}</span>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setDeleteConfirmOpen(true)}
-                className="gap-2"
-                data-testid="button-delete-project"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete Project
-              </Button>
+            <DialogTitle>
+              {project.name || `Project #${project.id}`}
             </DialogTitle>
           </DialogHeader>
 
@@ -166,7 +156,7 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                       data-testid="img-original"
                     />
                   </div>
-                  <div className="p-3">
+                  <div className="p-3 space-y-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -176,6 +166,16 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                     >
                       <Download className="h-4 w-4" />
                       Download Original
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteConfirmOpen(true)}
+                      className="gap-2 w-full"
+                      data-testid="button-delete-project"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Project
                     </Button>
                   </div>
                 </Card>
