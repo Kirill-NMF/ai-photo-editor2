@@ -12,7 +12,7 @@ import { eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
 import { editImageWithHuggingFace } from "./huggingface";
-import { generateThumbnailsBatch } from "./thumbnailHelpers";
+import { generateThumbnailsBatch, generateThumbnailInBackground } from "./thumbnailHelpers";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
