@@ -22,7 +22,10 @@ export async function generateThumbnailInBackground(
 
     // Initialize object storage service
     const objectStorageService = new ObjectStorageService();
-    const privateObjectDir = objectStorageService.getPrivateObjectDir();
+    const publicObjectSearchPaths = objectStorageService.getPublicObjectSearchPaths();
+    const publicObjectDir = publicObjectSearchPaths[0]; // Use first public path
+
+    console.log(`[ThumbnailBG] Using public directory: ${publicObjectDir}`);
 
     // Get the original file from GCS
     const originalFile = await objectStorageService.getObjectEntityFile(originalUrl);
@@ -31,19 +34,19 @@ export async function generateThumbnailInBackground(
     const uploadId = extractUploadIdFromPath(originalUrl);
     console.log(`[ThumbnailBG] Extracted upload ID: ${uploadId}`);
 
-    // Generate WebP thumbnail
+    // Generate WebP thumbnail in PUBLIC directory (accessible via /objects/ endpoint)
     const startTime = Date.now();
     const gcsPath = await thumbnailGenerator.generateUploadThumbnail(
       originalFile,
       uploadId,
-      privateObjectDir
+      publicObjectDir
     );
     const duration = Date.now() - startTime;
     
     console.log(`[ThumbnailBG] Thumbnail generated in ${duration}ms: ${gcsPath}`);
 
     // Convert GCS path to /objects/ path for frontend
-    // GCS:     /replit-objstore-xxx/.private/uploads/abc-123/thumb.webp
+    // GCS:     /replit-objstore-xxx/.public/uploads/abc-123/thumb.webp
     // Objects: /objects/uploads/abc-123/thumb.webp
     const thumbnailUrl = `/objects/uploads/${uploadId}/thumb.webp`;
     

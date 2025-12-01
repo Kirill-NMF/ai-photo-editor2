@@ -104,16 +104,17 @@ export class ThumbnailGenerator {
    * Generate WebP thumbnail from uploaded image during upload flow
    * @param originalFile - Original uploaded file
    * @param uploadId - Unique upload ID
-   * @param privateObjectDir - Private object directory from env
+   * @param publicObjectDir - PUBLIC object directory from env (thumbnails need public access)
    * @returns Thumbnail path
    */
   async generateUploadThumbnail(
     originalFile: File,
     uploadId: string,
-    privateObjectDir: string
+    publicObjectDir: string
   ): Promise<string> {
-    // Create thumbnail path: /bucket/uploads/{uploadId}/thumb.webp
-    const thumbnailPath = `${privateObjectDir}/uploads/${uploadId}/thumb.webp`;
+    // Create thumbnail path in PUBLIC directory: /bucket/.public/uploads/{uploadId}/thumb.webp
+    // This allows thumbnails to be accessible via /objects/ endpoint without auth
+    const thumbnailPath = `${publicObjectDir}/uploads/${uploadId}/thumb.webp`;
     
     return this.generateThumbnail(originalFile, thumbnailPath, {
       width: 400,   // Matches gallery card width (16:9 aspect ratio)
