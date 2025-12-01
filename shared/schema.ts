@@ -101,6 +101,7 @@ export const edits = pgTable("edits", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   prompt: text("prompt").notNull(),
   resultUrl: text("result_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
   savedImageId: integer("saved_image_id").references(() => images.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [

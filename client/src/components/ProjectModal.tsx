@@ -159,7 +159,7 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                 <Card className="overflow-hidden" data-testid="card-original-image">
                   <div className="aspect-video relative overflow-hidden bg-muted">
                     <img
-                      src={project.originalImage.currentUrl}
+                      src={project.originalImage.thumbnailUrl || project.originalImage.currentUrl}
                       alt="Original"
                       className="w-full h-full object-contain"
                       loading="lazy"
@@ -244,7 +244,7 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                     >
                       <div className="aspect-video relative overflow-hidden bg-muted">
                         <img
-                          src={edit.resultUrl}
+                          src={edit.thumbnailUrl || edit.resultUrl}
                           alt={edit.prompt}
                           className="w-full h-full object-contain"
                           loading="lazy"

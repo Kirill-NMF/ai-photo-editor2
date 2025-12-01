@@ -12,7 +12,7 @@ import { eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
 import { editImageWithHuggingFace } from "./huggingface";
-import { generateThumbnailsBatch, generateThumbnailInBackground } from "./thumbnailHelpers";
+import { generateThumbnailsBatch, generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -366,6 +366,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         prompt,
         resultUrl: resultPath,
+      });
+
+      // Generate thumbnail in background (fire-and-forget)
+      generateEditThumbnailInBackground(edit.id, resultPath).catch(err => {
+        console.error(`Failed to queue thumbnail generation for edit ${edit.id}:`, err);
       });
 
       console.log("Edit created successfully:", edit);

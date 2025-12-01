@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { images } from "../shared/schema";
+import { images, edits } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import { thumbnailGenerator } from "./thumbnailGenerator";
 import { ObjectStorageService } from "./objectStorage";
@@ -124,4 +124,65 @@ export async function generateThumbnailsBatch(
   console.log(`[ThumbnailBatch] Complete! Processed: ${processed}, Errors: ${errors}`);
 
   return { processed, errors };
+}
+
+/**
+ * Generate thumbnail for AI edit result
+ * Reuses thumbnail generation logic but updates edits table instead of images
+ * 
+ * @param editId - Database ID of the edit
+ * @param resultUrl - Object path of the AI edit result (e.g., "/objects/uploads/abc-123")
+ * @returns Promise that resolves when thumbnail is generated (or fails silently)
+ */
+export async function generateEditThumbnailInBackground(
+  editId: number,
+  resultUrl: string
+): Promise<void> {
+  try {
+    console.log(`[EditThumb] Starting thumbnail generation for edit ${editId}`);
+    console.log(`[EditThumb] Result URL: ${resultUrl}`);
+
+    // Initialize object storage service
+    const objectStorageService = new ObjectStorageService();
+    const privateObjectDir = objectStorageService.getPrivateObjectDir();
+
+    console.log(`[EditThumb] Using private directory: ${privateObjectDir}`);
+
+    // Get the result file from GCS
+    const resultFile = await objectStorageService.getObjectEntityFile(resultUrl);
+    
+    // Extract upload ID from the path
+    // AI edits use same path structure as uploads: /objects/uploads/{uploadId}
+    const uploadId = extractUploadIdFromPath(resultUrl);
+    console.log(`[EditThumb] Extracted upload ID: ${uploadId}`);
+
+    // Generate WebP thumbnail (reuse existing logic)
+    const startTime = Date.now();
+    const gcsPath = await thumbnailGenerator.generateUploadThumbnail(
+      resultFile,
+      uploadId,
+      privateObjectDir
+    );
+    const duration = Date.now() - startTime;
+    
+    console.log(`[EditThumb] Thumbnail generated in ${duration}ms: ${gcsPath}`);
+
+    // Convert GCS path to /objects/ path for frontend
+    const thumbnailUrl = `/objects/uploads/${uploadId}/thumb.webp`;
+    
+    console.log(`[EditThumb] Saving to DB: ${thumbnailUrl}`);
+
+    // Update EDITS table (not images!)
+    await db
+      .update(edits)
+      .set({ thumbnailUrl })
+      .where(eq(edits.id, editId));
+
+    console.log(`[EditThumb] ✓ Database updated for edit ${editId}`);
+
+  } catch (error) {
+    // Log error but don't throw (fire-and-forget pattern)
+    console.error(`[EditThumb] ✗ Failed to generate thumbnail for edit ${editId}:`, error);
+    console.error(`[EditThumb] Result URL: ${resultUrl}`);
+  }
 }
