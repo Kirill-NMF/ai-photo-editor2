@@ -47,6 +47,7 @@ export class ThumbnailGenerator {
 
       // Generate thumbnail using Sharp
       const thumbnailBuffer = await sharp(imageBuffer)
+        .rotate()  // Auto-rotate based on EXIF orientation (fixes sideways photos)
         .resize(opts.width, opts.height, {
           fit: 'cover',  // Crop to exact dimensions (maintains aspect ratio)
           position: 'center',  // Center crop
