@@ -441,6 +441,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save the edit as an image
       const savedImage = await storage.saveEditAsImage(edit, parentImage, overwriteLastSave);
 
+      // Generate thumbnail for saved edit (fire-and-forget)
+      generateThumbnailInBackground(savedImage.id, savedImage.originalUrl)
+        .catch(err => console.error('[SaveEdit] Thumbnail generation failed:', err));
+
       res.status(201).json({
         image: savedImage,
         message: overwriteLastSave ? "Previous save overwritten" : "Saved as new image",
