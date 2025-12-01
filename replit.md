@@ -27,6 +27,8 @@ Preferred communication style: Simple, everyday language.
 **Storage Strategy:** Interface-based design (`IStorage`) with database-backed storage. Uses optimized JOINs to prevent N+1 queries when fetching projects with images/edits. Replit Object Storage is used for secure image file storage with ACL policies.
 **Image Processing & Storage:** Presigned URL generation for uploads. Each upload creates a new project. AI transformations handled by `POST /api/edits`, which downloads source images, converts to base64, calls the Gemini API, uploads the result, and saves the edit record. "Overwrite Last Save" deletes previous save from DB (not just updates) to maintain clean gallery state.
 
+**Thumbnail System:** Automatic WebP thumbnail generation (400x225px, quality 80) using Sharp v0.34.5 provides 96-99.8% compression (e.g., 6.77MB → 13.5KB). Thumbnails stored in `/.private/uploads/{uploadId}/thumb.webp` alongside originals with ACL policy `visibility: "public"`. Public endpoint `/objects/uploads/:uploadId/thumb.webp` serves thumbnails without authentication (checks ACL), while originals remain protected. Generated in background via `generateThumbnailInBackground()` on upload, with admin endpoint `POST /api/admin/generate-thumbnails` for batch regeneration. Database tracks thumbnail URLs for fast gallery loading.
+
 ### External Dependencies
 
 **AI Integration (Multi-Provider):** 
