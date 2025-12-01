@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { File } from "@google-cloud/storage";
 import { objectStorageClient } from "./objectStorage";
+import { setObjectAclPolicy, ObjectAclPolicy } from "./objectAcl";
 
 export interface ThumbnailOptions {
   width?: number;
@@ -71,7 +72,7 @@ export class ThumbnailGenerator {
       const bucket = objectStorageClient.bucket(bucketName);
       const thumbnailFile = bucket.file(objectName);
 
-      // Upload thumbnail to GCS
+      // Upload thumbnail to GCS (DO NOT use public: true - bucket has PAP policy)
       await thumbnailFile.save(thumbnailBuffer, {
         metadata: {
           contentType: `image/${opts.format}`,
@@ -86,10 +87,19 @@ export class ThumbnailGenerator {
             originalHeight: metadata.height?.toString() || 'unknown',
           },
         },
-        public: false,  // Same ACL as original images (authenticated access)
+        public: false,  // Must be false due to bucket PAP policy
       });
 
       console.log(`[ThumbnailGenerator] ✓ Uploaded thumbnail to ${destinationPath}`);
+
+      // Set ACL policy to make thumbnail publicly readable
+      // This uses Replit's custom ACL system (NOT GCS public ACL which is blocked by PAP)
+      const aclPolicy: ObjectAclPolicy = {
+        owner: 'system',  // System-generated thumbnails
+        visibility: 'public',  // Publicly readable (low-res previews are safe)
+      };
+      await setObjectAclPolicy(thumbnailFile, aclPolicy);
+      console.log(`[ThumbnailGenerator] ✓ Set ACL policy to public`);
 
       // Return the object path (not public URL, for consistency with original images)
       return destinationPath;
