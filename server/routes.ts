@@ -13,6 +13,7 @@ import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
 import { editImageWithHuggingFace } from "./huggingface";
 import { generateThumbnailsBatch, generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
+import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from './rateLimiting';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -734,6 +735,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Failed to generate thumbnails',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
+    }
+  });
+
+  // TEST ENDPOINTS - For rate limiting testing
+  app.get("/api/test/rate-limit", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const result = await checkRateLimit(userId);
+      const user = await storage.getUser(userId);
+      
+      return res.json({
+        userId,
+        email: user?.email,
+        allowed: result.allowed,
+        remaining: result.remaining,
+        isLastEdit: result.isLastEdit,
+        resetDate: result.resetDate,
+      });
+    } catch (error) {
+      console.error("Error checking rate limit:", error);
+      res.status(500).json({ error: "Failed to check rate limit" });
+    }
+  });
+
+  app.post("/api/test/increment", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await incrementRateLimit(userId);
+      const result = await checkRateLimit(userId);
+      
+      return res.json({
+        message: "Incremented",
+        remaining: result.remaining,
+      });
+    } catch (error) {
+      console.error("Error incrementing rate limit:", error);
+      res.status(500).json({ error: "Failed to increment" });
+    }
+  });
+
+  app.post("/api/test/promo", async (req, res) => {
+    try {
+      const { prompt } = req.body;
+      
+      return res.json({
+        isPromo: isPromoCode(prompt),
+      });
+    } catch (error) {
+      console.error("Error checking promo code:", error);
+      res.status(500).json({ error: "Failed to check promo code" });
+    }
+  });
+
+  app.post("/api/test/apply-promo", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const result = await applyPromoCode(userId);
+      const rateLimit = await checkRateLimit(userId);
+      
+      return res.json({
+        ...result,
+        remaining: rateLimit.remaining,
+      });
+    } catch (error) {
+      console.error("Error applying promo code:", error);
+      res.status(500).json({ error: "Failed to apply promo code" });
     }
   });
 
