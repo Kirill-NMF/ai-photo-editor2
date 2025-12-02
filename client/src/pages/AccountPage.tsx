@@ -11,6 +11,7 @@ import { useRateLimit } from "@/contexts/RateLimitContext";
 
 export default function AccountPage() {
   const { user } = useAuth();
+  const { remaining, resetDate, isAdmin } = useRateLimit();
 
   const getInitials = () => {
     if (!user) return "?";
@@ -93,6 +94,57 @@ export default function AccountPage() {
             <div className="flex justify-end">
               <Button data-testid="button-save-profile">Save Changes</Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>API Usage</CardTitle>
+            <CardDescription>Monitor your AI editing quota</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isAdmin ? (
+              <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <Badge variant="secondary" className="text-sm" data-testid="badge-admin-unlimited">
+                  Admin Account
+                </Badge>
+                <div>
+                  <p className="font-medium" data-testid="text-admin-status">Unlimited AI edits</p>
+                  <p className="text-sm text-muted-foreground">No monthly restrictions</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm text-muted-foreground">AI Edits Remaining</p>
+                    <p className="text-2xl font-bold" data-testid="text-ai-edits-remaining">
+                      {remaining} <span className="text-base font-normal text-muted-foreground">/ 11</span>
+                    </p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Resets on</p>
+                    {resetDate && (
+                      <p className="text-sm font-semibold" data-testid="text-reset-date">
+                        {new Intl.DateTimeFormat('ru-RU', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        }).format(resetDate)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <Progress value={(remaining / 11) * 100} className="h-2" data-testid="progress-ai-edits" />
+                
+                <p className="text-xs text-muted-foreground" data-testid="text-usage-info">
+                  Бесплатный тариф включает 11 AI редактирований в месяц. 
+                  Для увеличения лимита используйте промо-код в Editor.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
