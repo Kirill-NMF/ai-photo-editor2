@@ -255,6 +255,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const { imageId, prompt, baseEditId, provider } = editRequestSchema.parse(req.body);
 
+      // === PROMO CODE CHECK ===
+      if (isPromoCode(prompt)) {
+        const result = await applyPromoCode(userId);
+        
+        if (result.success) {
+          return res.json({
+            success: true,
+            isPromoCode: true,
+            message: result.message,
+          });
+        } else {
+          return res.status(400).json({
+            success: false,
+            isPromoCode: true,
+            error: result.message,
+          });
+        }
+      }
+
+      // === RATE LIMIT CHECK ===
+      const rateLimit = await checkRateLimit(userId);
+      
+      if (!rateLimit.allowed) {
+        return res.status(429).json({
+          error: "API limit reached",
+          remaining: 0,
+          resetDate: rateLimit.resetDate,
+          limitReached: true,
+        });
+      }
+
       // Get the image
       const image = await storage.getImage(imageId);
       if (!image) {
@@ -369,13 +400,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resultUrl: resultPath,
       });
 
+      // === INCREMENT COUNTER (only on success) ===
+      await incrementRateLimit(userId);
+
+      // === GET UPDATED RATE LIMIT ===
+      const newRateLimit = await checkRateLimit(userId);
+
       // Generate thumbnail in background (fire-and-forget)
       generateEditThumbnailInBackground(edit.id, resultPath).catch(err => {
         console.error(`Failed to queue thumbnail generation for edit ${edit.id}:`, err);
       });
 
       console.log("Edit created successfully:", edit);
-      res.status(201).json(edit);
+      
+      // === RETURN SUCCESS WITH RATE LIMIT INFO ===
+      res.status(201).json({
+        ...edit,
+        rateLimit: {
+          remaining: newRateLimit.remaining,
+          isLastEdit: newRateLimit.isLastEdit,
+          resetDate: newRateLimit.resetDate,
+        },
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
