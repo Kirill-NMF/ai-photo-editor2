@@ -14,9 +14,10 @@ Preferred communication style: Simple, everyday language.
 
 **Framework & Build System:** React 18 with TypeScript via Vite. Wouter for client-side routing.
 **UI Component System:** Shadcn UI (Radix UI primitives) and Tailwind CSS for styling. Follows a "canvas-first" design principle with a custom spacing scale and Inter/JetBrains Mono typography.
-**State Management:** TanStack React Query for server state, React Context API for global UI state, and React hooks for component state.
-**Key User Flows:** Onboarding (user preferences), Editor Workspace (upload, prompt-based editing, history, save), and Gallery (browse, detail view, before/after).
+**State Management:** TanStack React Query for server state, React Context API for global UI state (RateLimitContext for rate limit data), and React hooks for component state.
+**Key User Flows:** Onboarding (user preferences), Editor Workspace (upload, prompt-based editing, history, save), Gallery (browse, detail view, before/after), and Account Settings (profile management, API usage monitoring).
 **File Upload:** Uppy Dashboard for uploads directly to Replit Object Storage via presigned URLs. Supports JPEG, PNG, WebP up to 20MB, with client-side dimension extraction.
+**Rate Limit Display:** Account Settings page displays API usage information via RateLimitContext. Regular users see remaining edits (X/11), progress bar, and reset date in Russian format. Admin users see "Unlimited" badge. Includes defensive value clamping and loading states.
 
 ### Backend Architecture
 
