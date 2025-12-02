@@ -784,24 +784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // TEST ENDPOINTS - For rate limiting testing
-  app.get("/api/test/rate-limit", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const result = await checkRateLimit(userId);
-      const user = await storage.getUser(userId);
-      
-      return res.json({
-        userId,
-        email: user?.email,
-        allowed: result.allowed,
-        remaining: result.remaining,
-        isLastEdit: result.isLastEdit,
-        resetDate: result.resetDate,
-      });
-    } catch (error) {
-      console.error("Error checking rate limit:", error);
-      res.status(500).json({ error: "Failed to check rate limit" });
+" });
     }
   });
 
