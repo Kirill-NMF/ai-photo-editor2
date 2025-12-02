@@ -1,0 +1,228 @@
+GOAL
+
+Add database fields to track API usage and promo code status.
+
+Time: 10 minutes
+Risk: Low (additive changes only)
+Testable: Yes (check database schema)
+
+
+
+
+IMPLEMENTATION
+
+Step 1: Add fields to users table
+
+File: shared/schema.ts
+
+Find the users table definition:
+
+TypeScript
+
+
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey(),
+  email: varchar("email").notNull().unique(),
+  name: varchar("name"),
+  // ... existing fields
+});
+
+
+Add these new fields at the end (before closing bracket):
+
+TypeScript
+
+
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey(),
+  email: varchar("email").notNull().unique(),
+  name: varchar("name"),
+  // ... existing fields
+  
+  // API rate limiting fields
+  apiRequestsCount: integer("api_requests_count").notNull().default(0),
+  apiRequestsResetDate: timestamp("api_requests_reset_date"),
+  promoCodeUsed: integer("promo_code_used").notNull().default(0),
+  isAdmin: integer("is_admin").notNull().default(0),
+});
+
+
+Field descriptions:
+
+•
+apiRequestsCount - Number of AI edits used this month (default: 0)
+
+•
+apiRequestsResetDate - Date when counter will reset (null on first use)
+
+•
+promoCodeUsed - Whether promo code was used (0 = no, 1 = yes)
+
+•
+isAdmin - Admin flag (0 = regular user, 1 = admin with unlimited access)
+
+
+
+
+Step 2: Run database migration
+
+In Replit Shell:
+
+Bash
+
+
+npm run db:push
+
+
+Expected output:
+
+Plain Text
+
+
+✓ Pushing schema changes to database
+✓ Added column: api_requests_count
+✓ Added column: api_requests_reset_date
+✓ Added column: promo_code_used
+✓ Added column: is_admin
+
+
+
+
+
+TESTING
+
+Test 1: Check schema in database
+
+Option A: Using SQL (in Shell)
+
+Bash
+
+
+psql $DATABASE_URL
+
+
+Then run:
+
+SQL
+
+
+\d users
+
+
+Expected: Should see new columns:
+
+•
+api_requests_count | integer | not null | default 0
+
+•
+api_requests_reset_date | timestamp
+
+•
+promo_code_used | integer | not null | default 0
+
+•
+is_admin | integer | not null | default 0
+
+Exit psql:
+
+SQL
+
+
+\q
+
+
+
+
+
+Option B: Using Drizzle Studio
+
+Bash
+
+
+npx drizzle-kit studio
+
+
+Open the URL, navigate to users table, check that new columns exist.
+
+
+
+
+Test 2: Check existing users have default values
+
+In psql:
+
+SQL
+
+
+SELECT id, email, api_requests_count, promo_code_used, is_admin 
+FROM users 
+LIMIT 5;
+
+
+Expected: All existing users should have:
+
+•
+api_requests_count = 0
+
+•
+promo_code_used = 0
+
+•
+is_admin = 0
+
+•
+api_requests_reset_date = NULL
+
+
+
+
+Test 3: Make yourself admin (for testing)
+
+In psql:
+
+SQL
+
+
+UPDATE users 
+SET is_admin = 1 
+WHERE email = 'your-email@example.com';
+
+
+Verify:
+
+SQL
+
+
+SELECT email, is_admin FROM users WHERE email = 'your-email@example.com';
+
+
+Expected:
+
+Plain Text
+
+
+email                  | is_admin
+-----------------------+---------
+your-email@example.com | 1
+
+
+
+
+
+SUCCESS CRITERIA
+
+•
+✅ npm run db:push completes without errors
+
+•
+✅ New columns exist in users table
+
+•
+✅ Existing users have default values (0, 0, 0, NULL)
+
+•
+✅ Can update is_admin field manually
+
+•
+✅ Application starts without errors
+
