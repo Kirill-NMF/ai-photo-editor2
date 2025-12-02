@@ -13,9 +13,7 @@ export function PromoCodeSuccessModal({ isOpen, onClose }: PromoCodeSuccessModal
     >
       <div className="bg-card rounded-lg p-6 max-w-md mx-4 shadow-xl border">
         <div className="text-center">
-          <div className="text-6xl mb-4">🍪</div>
-          
-          <h2 className="text-xl font-semibold mb-4">
+          <h2 className="text-xl font-semibold mb-4 mt-2">
             Спасибо за пряник!
           </h2>
           

@@ -24,6 +24,9 @@ import type { Image, Edit } from "@shared/schema";
 import { EditorCache, debounce } from "@/utils/editorCache";
 import MobileBottomSheet from "@/components/MobileBottomSheet";
 import MobileSideDrawer from "@/components/MobileSideDrawer";
+import { useRateLimit } from "@/contexts/RateLimitContext";
+import { LimitReachedModal } from "@/components/LimitReachedModal";
+import { PromoCodeSuccessModal } from "@/components/PromoCodeSuccessModal";
 
 type EditWithUI = Edit & { isSaved: boolean };
 
@@ -40,6 +43,11 @@ export default function EditorPage() {
   const { toast } = useToast();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
+  
+  // Rate limiting state
+  const { remaining, isAdmin, refresh: refreshRateLimit } = useRateLimit();
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showPromoModal, setShowPromoModal] = useState(false);
   
   // Mobile state management
   const [isMobile, setIsMobile] = useState(false);
@@ -367,16 +375,46 @@ export default function EditorPage() {
       
       response = await apiRequest("POST", "/api/edits", requestBody);
 
+      // Parse response first to check for promo code
+      const responseData = await response.json();
+      
+      // Handle promo code response (can be success or error)
+      if (responseData.isPromoCode) {
+        if (responseData.success) {
+          setShowPromoModal(true);
+          refreshRateLimit().catch(err => console.error('Failed to refresh rate limit:', err));
+        } else {
+          // Promo code already used or error
+          throw new Error(responseData.error || responseData.message || "Promo code error");
+        }
+        return;
+      }
+
+      // Now check if response was ok for regular edits
       if (!response.ok) {
-        // Try to parse error response
-        const errorData = await response.json();
-        if (errorData?.message) {
-          throw new Error(errorData.message);
+        // Handle rate limit exceeded (429)
+        if (response.status === 429) {
+          refreshRateLimit().catch(err => console.error('Failed to refresh rate limit:', err));
+          setShowLimitModal(true);
+          return;
+        }
+        
+        // Generic error handling
+        if (responseData?.message || responseData?.error) {
+          throw new Error(responseData.message || responseData.error);
         }
         throw new Error("Failed to generate edit");
       }
 
-      const edit: Edit = await response.json();
+      // Regular edit response - must have edit data
+      if (!responseData.id && !responseData.edit) {
+        throw new Error("Invalid response format from server");
+      }
+      
+      const edit: Edit = responseData.edit || responseData;
+      
+      // Refresh rate limit counter after successful edit (non-blocking)
+      refreshRateLimit().catch(err => console.error('Failed to refresh rate limit:', err));
       
       // Add the new edit to the list
       const newEdit: EditWithUI = {
@@ -991,16 +1029,24 @@ export default function EditorPage() {
                 </Select>
               </div>
 
-              {/* Generate Button */}
-              <Button
-                onClick={() => handlePromptSubmit(promptText)}
-                disabled={isProcessing || !promptText.trim()}
-                className="w-full"
-                size="lg"
-                data-testid="button-generate"
-              >
-                {isProcessing ? 'Generating...' : 'Generate'}
-              </Button>
+              {/* Generate Button with Rate Limit Counter */}
+              <div className="space-y-2">
+                <Button
+                  onClick={() => handlePromptSubmit(promptText)}
+                  disabled={isProcessing || !promptText.trim()}
+                  className="w-full"
+                  size="lg"
+                  data-testid="button-generate"
+                >
+                  {isProcessing ? 'Generating...' : 'Generate'}
+                </Button>
+                
+                {!isAdmin && (
+                  <p className="text-xs text-center text-muted-foreground" data-testid="text-rate-limit">
+                    {remaining} {remaining === 1 ? 'edit' : 'edits'} remaining this month
+                  </p>
+                )}
+              </div>
 
               {/* Quick Suggestions - COMPACT VERSION */}
               <div className="mt-4">
@@ -1048,6 +1094,16 @@ export default function EditorPage() {
           currentBaseId={currentBaseEditId}
         />
       )}
+      
+      {/* Rate Limit Modals */}
+      <LimitReachedModal 
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+      />
+      <PromoCodeSuccessModal 
+        isOpen={showPromoModal}
+        onClose={() => setShowPromoModal(false)}
+      />
     </div>
   );
 }
