@@ -13,6 +13,7 @@ import EditorPage from "@/pages/EditorPage";
 import GalleryPage from "@/pages/GalleryPage";
 import AccountPage from "@/pages/AccountPage";
 import NotFound from "@/pages/not-found";
+import { RateLimitProvider } from "@/contexts/RateLimitContext";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -93,9 +94,11 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AppContent />
-      </TooltipProvider>
+      <RateLimitProvider>
+        <TooltipProvider>
+          <AppContent />
+        </TooltipProvider>
+      </RateLimitProvider>
     </QueryClientProvider>
   );
 }
