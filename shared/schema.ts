@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -32,6 +33,12 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // API rate limiting fields
+  apiRequestsCount: integer("api_requests_count").notNull().default(0),
+  apiRequestsResetDate: timestamp("api_requests_reset_date"),
+  promoCodeUsed: boolean("promo_code_used").notNull().default(false),
+  isAdmin: boolean("is_admin").notNull().default(false),
 });
 
 export const upsertUserSchema = createInsertSchema(users).omit({
