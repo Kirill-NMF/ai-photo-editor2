@@ -784,52 +784,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-" });
-    }
-  });
-
-  app.post("/api/test/increment", isAuthenticated, async (req: any, res) => {
+  // Get current rate limit status
+  app.get("/api/rate-limit", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      await incrementRateLimit(userId);
-      const result = await checkRateLimit(userId);
-      
-      return res.json({
-        message: "Incremented",
-        remaining: result.remaining,
-      });
-    } catch (error) {
-      console.error("Error incrementing rate limit:", error);
-      res.status(500).json({ error: "Failed to increment" });
-    }
-  });
-
-  app.post("/api/test/promo", async (req, res) => {
-    try {
-      const { prompt } = req.body;
-      
-      return res.json({
-        isPromo: isPromoCode(prompt),
-      });
-    } catch (error) {
-      console.error("Error checking promo code:", error);
-      res.status(500).json({ error: "Failed to check promo code" });
-    }
-  });
-
-  app.post("/api/test/apply-promo", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const result = await applyPromoCode(userId);
       const rateLimit = await checkRateLimit(userId);
       
       return res.json({
-        ...result,
         remaining: rateLimit.remaining,
+        resetDate: rateLimit.resetDate,
+        isAdmin: rateLimit.remaining === 999,
       });
     } catch (error) {
-      console.error("Error applying promo code:", error);
-      res.status(500).json({ error: "Failed to apply promo code" });
+      console.error("Error checking rate limit:", error);
+      res.status(500).json({ error: "Failed to check rate limit" });
     }
   });
 
