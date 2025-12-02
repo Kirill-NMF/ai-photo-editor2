@@ -1,0 +1,223 @@
+Test 2: Test promo code in edit endpoint
+
+In browser console:
+
+JavaScript
+
+
+// Test promo code
+fetch('/api/edits', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    imageId: 1, // Use real image ID
+    prompt: 'Вот тебе пряник',
+    baseEditId: null
+  })
+}).then(r => r.json()).then(console.log);
+
+
+Expected response:
+
+JSON
+
+
+{
+  "success": true,
+  "isPromoCode": true,
+  "message": "Спасибо за пряник. Теперь я сыт и могу служить дальше"
+}
+
+
+Try again:
+
+JSON
+
+
+{
+  "success": false,
+  "isPromoCode": true,
+  "error": "Промо-код уже был использован ранее"
+}
+
+
+
+
+
+Test 3: Test rate limit enforcement
+
+Reset your counter first (in psql):
+
+SQL
+
+
+UPDATE users 
+SET api_requests_count = 10, promo_code_used = 0 
+WHERE email = 'your-email@example.com';
+
+
+Make a real edit:
+
+1.
+Go to Editor
+
+2.
+Upload an image
+
+3.
+Enter prompt: "make it brighter"
+
+4.
+Click Generate
+
+Expected:
+
+•
+Edit succeeds
+
+•
+Check console → should see warning toast "Давай последний запрос и я обедать" (we'll add this in Phase 4)
+
+Make another edit:
+
+Expected:
+
+•
+Edit succeeds (11th edit)
+
+•
+Counter now at 11
+
+Try 12th edit:
+
+Expected:
+
+•
+Edit blocked
+
+•
+Error: "API limit reached"
+
+
+
+
+Test 4: Test rate limit status endpoint
+
+In browser console:
+
+JavaScript
+
+
+fetch('/api/rate-limit')
+  .then(r => r.json())
+  .then(console.log);
+
+
+Expected response:
+
+JSON
+
+
+{
+  "remaining": 0,
+  "resetDate": "2025-01-02T...",
+  "isAdmin": false
+}
+
+
+
+
+
+Test 5: Test failed edit doesn't count
+
+Simulate failed edit:
+
+1.
+Temporarily break AI API (e.g., invalid API key)
+
+2.
+Try to make edit
+
+3.
+Edit fails with error
+
+Check counter:
+
+JavaScript
+
+
+fetch('/api/rate-limit')
+  .then(r => r.json())
+  .then(console.log);
+
+
+Expected: Counter should NOT have increased (failed edits don't count)
+
+
+
+
+Test 6: Test admin bypass
+
+Make yourself admin:
+
+SQL
+
+
+UPDATE users SET is_admin = 1 WHERE email = 'your-email@example.com';
+
+
+Check status:
+
+JavaScript
+
+
+fetch('/api/rate-limit')
+  .then(r => r.json())
+  .then(console.log);
+
+
+Expected:
+
+JSON
+
+
+{
+  "remaining": 999,
+  "resetDate": "...",
+  "isAdmin": true
+}
+
+
+Make 20 edits:
+
+Expected: All succeed (no limit for admin)
+
+
+
+
+SUCCESS CRITERIA
+
+•
+✅ Promo code detection works in edit endpoint
+
+•
+✅ Promo code resets counter and shows success message
+
+•
+✅ Promo code can only be used once
+
+•
+✅ Rate limit blocks 12th edit
+
+•
+✅ Failed edits don't increment counter
+
+•
+✅ Admin users bypass limit
+
+•
+✅ Rate limit info returned in edit response
+
+•
+✅ /api/rate-limit endpoint returns correct status
+

@@ -1,0 +1,511 @@
+GOAL
+
+Add UI components to display rate limits, warnings, and modals.
+
+Time: 30 minutes
+Risk: Low (UI only, doesn't affect backend)
+Testable: Yes (visual testing)
+
+
+
+
+PART A: Rate Limit Context (10 min)
+
+Step 1: Create RateLimitContext
+
+File: client/src/contexts/RateLimitContext.tsx (NEW FILE)
+
+TypeScript
+
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+interface RateLimitContextType {
+  remaining: number;
+  resetDate: Date | null;
+  isAdmin: boolean;
+  refresh: () => Promise<void>;
+}
+
+const RateLimitContext = createContext<RateLimitContextType | null>(null);
+
+export function RateLimitProvider({ children }: { children: ReactNode }) {
+  const [remaining, setRemaining] = useState<number>(11);
+  const [resetDate, setResetDate] = useState<Date | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const refresh = async () => {
+    try {
+      const response = await fetch('/api/rate-limit');
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      
+      setRemaining(data.remaining);
+      setResetDate(data.resetDate ? new Date(data.resetDate) : null);
+      setIsAdmin(data.isAdmin);
+    } catch (error) {
+      console.error('[RateLimit] Failed to fetch:', error);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  return (
+    <RateLimitContext.Provider value={{ remaining, resetDate, isAdmin, refresh }}>
+      {children}
+    </RateLimitContext.Provider>
+  );
+}
+
+export function useRateLimit() {
+  const context = useContext(RateLimitContext);
+  if (!context) {
+    throw new Error('useRateLimit must be used within RateLimitProvider');
+  }
+  return context;
+}
+
+
+
+
+
+Step 2: Wrap app with RateLimitProvider
+
+File: client/src/App.tsx or client/src/main.tsx
+
+Find where app is rendered:
+
+TypeScript
+
+
+<QueryClientProvider client={queryClient}>
+  <RouterProvider router={router} />
+</QueryClientProvider>
+
+
+Wrap with RateLimitProvider:
+
+TypeScript
+
+
+import { RateLimitProvider } from './contexts/RateLimitContext';
+
+<QueryClientProvider client={queryClient}>
+  <RateLimitProvider>
+    <RouterProvider router={router} />
+  </RateLimitProvider>
+</QueryClientProvider>
+
+
+
+
+
+Test Part A:
+
+In browser console:
+
+JavaScript
+
+
+// Check if context loads
+// Should see network request to /api/rate-limit
+
+
+Expected: No errors, rate limit fetched on page load
+
+
+
+
+PART B: Modals (15 min)
+
+Step 3: Create LimitReachedModal
+
+File: client/src/components/LimitReachedModal.tsx (NEW FILE)
+
+TypeScript
+
+
+interface LimitReachedModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function LimitReachedModal({ isOpen, onClose }: LimitReachedModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+        <div className="text-center">
+          <div className="text-5xl mb-4">⏱️</div>
+          
+          <h2 className="text-xl font-semibold mb-4">
+            Тестовый период закончен
+          </h2>
+          
+          <p className="text-gray-600 mb-6">
+            К сожалению тестовый период закончен, для продления напишите Кириллу в Telegram
+          </p>
+          
+          <a
+            href="https://t.me/Kirill_NMF"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition mb-4 w-full"
+          >
+            Написать в Telegram
+          </a>
+          
+          <button
+            onClick={onClose}
+            className="block w-full text-gray-500 hover:text-gray-700 mt-2"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>
+   );
+}
+
+
+
+
+
+Step 4: Create PromoCodeSuccessModal
+
+File: client/src/components/PromoCodeSuccessModal.tsx (NEW FILE)
+
+TypeScript
+
+
+interface PromoCodeSuccessModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function PromoCodeSuccessModal({ isOpen, onClose }: PromoCodeSuccessModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🍪</div>
+          
+          <h2 className="text-xl font-semibold mb-4">
+            Спасибо за пряник!
+          </h2>
+          
+          <p className="text-gray-600 mb-6">
+            Теперь я сыт и могу служить дальше
+          </p>
+          
+          <button
+            onClick={onClose}
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition w-full"
+          >
+            Продолжить
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+Test Part B:
+
+Manually test modals:
+
+File: client/src/pages/EditorPage.tsx
+
+Add temporary test buttons:
+
+TypeScript
+
+
+import { LimitReachedModal } from '../components/LimitReachedModal';
+import { PromoCodeSuccessModal } from '../components/PromoCodeSuccessModal';
+
+function EditorPage() {
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  
+  return (
+    <div>
+      {/* TEST BUTTONS - Remove after testing */}
+      <button onClick={() => setShowLimitModal(true)}>Test Limit Modal</button>
+      <button onClick={() => setShowPromoModal(true)}>Test Promo Modal</button>
+      
+      <LimitReachedModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+      />
+      
+      <PromoCodeSuccessModal
+        isOpen={showPromoModal}
+        onClose={() => setShowPromoModal(false)}
+      />
+    </div>
+  );
+}
+
+
+Test:
+
+1.
+Click "Test Limit Modal" → modal appears
+
+2.
+Click "Написать в Telegram" → opens Telegram link
+
+3.
+Click "Закрыть" → modal closes
+
+4.
+Click "Test Promo Modal" → modal appears
+
+5.
+Click "Продолжить" → modal closes
+
+Remove test buttons after testing.
+
+
+
+
+PART C: Editor Integration (5 min)
+
+Step 5: Add rate limit display in Editor
+
+File: client/src/pages/EditorPage.tsx
+
+Import:
+
+TypeScript
+
+
+import { useRateLimit } from '../contexts/RateLimitContext';
+import { toast } from 'react-hot-toast'; // Or your toast library
+
+
+Add rate limit display above Generate button:
+
+TypeScript
+
+
+function EditorPage() {
+  const { remaining, isAdmin, refresh } = useRateLimit();
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  
+  // ... existing code
+  
+  return (
+    <div>
+      {/* ... existing editor UI */}
+      
+      {/* Rate limit display (above Generate button) */}
+      {!isAdmin && (
+        <div className="text-sm text-gray-600 mb-2 text-center">
+          Осталось {remaining} из 11 запросов
+        </div>
+      )}
+      
+      {/* Generate button */}
+      <button onClick={handleGenerate}>
+        Generate
+      </button>
+      
+      {/* Modals */}
+      <LimitReachedModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+      />
+      
+      <PromoCodeSuccessModal
+        isOpen={showPromoModal}
+        onClose={() => setShowPromoModal(false)}
+      />
+    </div>
+  );
+}
+
+
+
+
+
+Step 6: Update handleGenerate to show modals
+
+Find handleGenerate function:
+
+TypeScript
+
+
+async function handleGenerate() {
+  const response = await fetch('/api/edits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageId, prompt, baseEditId }),
+  });
+  
+  const data = await response.json();
+  
+  if (data.success) {
+    // ... existing success handling
+  }
+}
+
+
+Update to handle rate limit responses:
+
+TypeScript
+
+
+async function handleGenerate() {
+  const response = await fetch('/api/edits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageId, prompt, baseEditId }),
+  });
+  
+  const data = await response.json();
+  
+  // === PROMO CODE ===
+  if (data.isPromoCode) {
+    if (data.success) {
+      setShowPromoModal(true);
+      await refresh(); // Refresh rate limit display
+    } else {
+      toast.error(data.error); // "Промо-код уже был использован"
+    }
+    return;
+  }
+  
+  // === LIMIT REACHED ===
+  if (data.limitReached) {
+    setShowLimitModal(true);
+    return;
+  }
+  
+  // === SUCCESS ===
+  if (data.success) {
+    // Show warning if this was 10th edit
+    if (data.rateLimit?.isLastEdit) {
+      toast.warning('Давай последний запрос и я обедать', {
+        duration: 5000,
+      });
+    }
+    
+    // Refresh rate limit display
+    await refresh();
+    
+    // ... existing success handling (show edit, etc.)
+  }
+}
+
+
+
+
+
+Test Part C:
+
+Test 1: Rate limit display
+
+1.
+Open Editor
+
+2.
+Expected: See "Осталось X из 11 запросов" above Generate button
+
+Test 2: Warning toast
+
+1.
+Set counter to 10 (in database)
+
+2.
+Make an edit
+
+3.
+Expected: Toast "Давай последний запрос и я обедать" appears
+
+Test 3: Limit modal
+
+1.
+Set counter to 11 (in database)
+
+2.
+Try to make edit
+
+3.
+Expected: Modal "Тестовый период закончен..." appears
+
+4.
+Click Telegram link → opens
+
+5.
+Close modal → can close
+
+6.
+Try edit again → modal appears again
+
+Test 4: Promo code modal
+
+1.
+Enter "Вот тебе пряник" in prompt
+
+2.
+Click Generate
+
+3.
+Expected: Modal "Спасибо за пряник!" appears
+
+4.
+Close modal
+
+5.
+Expected: Counter resets to "Осталось 11 из 11"
+
+Test 5: Promo code already used
+
+1.
+Try promo code again
+
+2.
+Expected: Error toast "Промо-код уже был использован ранее"
+
+
+
+
+SUCCESS CRITERIA
+
+•
+✅ RateLimitContext loads on app start
+
+•
+✅ Rate limit display shows in Editor
+
+•
+✅ LimitReachedModal appears when limit exceeded
+
+•
+✅ PromoCodeSuccessModal appears after promo code
+
+•
+✅ Warning toast after 10th edit
+
+•
+✅ Telegram link works
+
+•
+✅ Modals are closeable
+
+•
+✅ Counter updates after promo code
+
