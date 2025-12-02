@@ -125,7 +125,7 @@ export default function AccountPage() {
                   
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Resets on</p>
-                    {resetDate && (
+                    {resetDate ? (
                       <p className="text-sm font-semibold" data-testid="text-reset-date">
                         {new Intl.DateTimeFormat('ru-RU', {
                           day: 'numeric',
@@ -133,11 +133,15 @@ export default function AccountPage() {
                           year: 'numeric'
                         }).format(resetDate)}
                       </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground" data-testid="text-reset-date-unknown">
+                        Loading...
+                      </p>
                     )}
                   </div>
                 </div>
                 
-                <Progress value={(remaining / 11) * 100} className="h-2" data-testid="progress-ai-edits" />
+                <Progress value={Math.max(0, Math.min(100, (remaining / 11) * 100))} className="h-2" data-testid="progress-ai-edits" />
                 
                 <p className="text-xs text-muted-foreground" data-testid="text-usage-info">
                   Бесплатный тариф включает 11 AI редактирований в месяц. 
