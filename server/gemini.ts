@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { setupGlobalProxy } from './proxyConfig';
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -7,6 +8,8 @@ if (!apiKey) {
 }
 
 // Initialize Google AI Studio client
+setupGlobalProxy();
+
 const ai = new GoogleGenAI({
   apiKey: apiKey
 });
