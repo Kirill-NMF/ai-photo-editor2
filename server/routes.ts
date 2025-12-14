@@ -4,7 +4,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { insertImageSchema, edits, images } from "@shared/schema";
@@ -14,15 +13,18 @@ import { editImageWithGemini } from "./gemini";
 import { editImageWithHuggingFace } from "./huggingface";
 import { generateThumbnailsBatch, generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
 import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from './rateLimiting';
+import { authenticateJWT } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit Auth middleware
-  await setupAuth(app);
+  const requireAuth = authenticateJWT();
 
   // Auth route - Get current user
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -56,8 +58,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Object Storage - Serve private objects with ACL check
-  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
-    const userId = req.user?.claims?.sub;
+  app.get("/objects/:objectPath(*)", requireAuth, async (req, res) => {
+    const userId = req.userId;
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
@@ -80,8 +82,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get presigned upload URL
-  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
+  app.post("/api/objects/upload", requireAuth, async (req, res) => {
     try {
+      const userId = req.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
@@ -92,9 +98,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create image record after upload
-  app.post("/api/images", isAuthenticated, async (req, res) => {
+  app.post("/api/images", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -153,9 +159,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's images
-  app.get("/api/images", isAuthenticated, async (req, res) => {
+  app.get("/api/images", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -169,9 +175,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single image
-  app.get("/api/images/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/images/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -199,9 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update image (e.g., save an edit as the current version)
-  app.put("/api/images/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/images/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -239,9 +245,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create an edit (generate edited image using Gemini)
-  app.post("/api/edits", isAuthenticated, async (req, res) => {
+  app.post("/api/edits", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -461,9 +467,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Save an edit as a new image in the gallery
-  app.post("/api/edits/:editId/save", isAuthenticated, async (req, res) => {
+  app.post("/api/edits/:editId/save", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -512,9 +518,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get edits for an image (alternative route pattern)
-  app.get("/api/edits/image/:imageId", isAuthenticated, async (req, res) => {
+  app.get("/api/edits/image/:imageId", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -543,9 +549,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get edits for an image (original route pattern)
-  app.get("/api/images/:id/edits", isAuthenticated, async (req, res) => {
+  app.get("/api/images/:id/edits", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -574,9 +580,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete edit
-  app.delete("/api/edits/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/edits/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -605,9 +611,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all projects for the current user
-  app.get("/api/projects", isAuthenticated, async (req, res) => {
+  app.get("/api/projects", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -621,9 +627,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a single project with its original image and edits
-  app.get("/api/projects/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/projects/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -650,9 +656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a project
-  app.delete("/api/projects/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/projects/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -680,9 +686,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TEMPORARY: Migration endpoint to create projects for existing images
-  app.post("/api/migrate-data", isAuthenticated, async (req, res) => {
+  app.post("/api/migrate-data", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -736,7 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Processes up to 10 images per request to avoid overwhelming the system
    * Can be called multiple times to process all images
    */
-  app.post("/api/admin/generate-thumbnails", async (req, res) => {
+  app.post("/api/admin/generate-thumbnails", requireAuth, async (req, res) => {
     try {
       console.log('[Admin] Manual thumbnail generation triggered');
 
@@ -785,9 +791,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current rate limit status
-  app.get("/api/rate-limit", isAuthenticated, async (req: any, res) => {
+  app.get("/api/rate-limit", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const rateLimit = await checkRateLimit(userId);
       
       return res.json({

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import authRouter from "./routes/auth";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -47,6 +48,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use("/api/auth", authRouter);
+
 (async () => {
   const server = await registerRoutes(app);
 
@@ -75,7 +78,6 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });
