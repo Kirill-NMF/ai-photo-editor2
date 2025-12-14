@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,21 +11,25 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && (!token || !isAuthenticated)) {
       toast({
         title: "Unauthorized",
         description: "You need to log in to access this page. Redirecting...",
         variant: "destructive",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
+      const timer = setTimeout(() => {
+        navigate("/");
+      }, 400);
+      return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading, toast]);
+  }, [isAuthenticated, isLoading, navigate, toast, token]);
 
-  if (isLoading) {
+  if (token && isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -35,7 +40,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!token || !isAuthenticated) {
     return null;
   }
 

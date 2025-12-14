@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Header from "@/components/Header";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import HomePage from "@/pages/HomePage";
+import LoginPage from "@/pages/Login";
 import OnboardingPage from "@/pages/OnboardingPage";
 import EditorPage from "@/pages/EditorPage";
 import GalleryPage from "@/pages/GalleryPage";
@@ -37,6 +38,7 @@ function RouterContent() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/login" component={LoginPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/editor/:imageId">
         <DashboardLayout><EditorPage /></DashboardLayout>

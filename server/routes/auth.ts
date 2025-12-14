@@ -25,7 +25,7 @@ authRouter.post("/telegram/callback", async (req, res) => {
     }
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    console.log("TELEGRAM_BOT_TOKEN =", botToken); // temporary debug log
+    // console.log(" =", botToken); // temporary debug log
     if (!botToken) {
       console.error("TELEGRAM_BOT_TOKEN is not configured");
       return res.status(500).json({ error: "Server misconfiguration" });
@@ -45,6 +45,8 @@ authRouter.post("/telegram/callback", async (req, res) => {
     }
 
     const isValid = checkTelegramAuth(normalizedData, botToken);
+
+    
     if (!isValid) {
       return res.status(401).json({ error: "Unauthorized: Invalid hash" });
     }
