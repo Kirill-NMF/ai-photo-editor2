@@ -22,7 +22,12 @@ app.use(express.urlencoded({ extended: false }));
 app.use((_, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; frame-src 'self' https://oauth.telegram.org; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'self' 'unsafe-inline';",
+    "default-src 'self'; " +
+      "frame-src 'self' https://oauth.telegram.org; " +
+      "img-src 'self' data: https:; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com;",
   );
   next();
 });
