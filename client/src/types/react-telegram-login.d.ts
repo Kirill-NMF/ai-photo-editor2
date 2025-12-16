@@ -15,7 +15,8 @@ declare module "react-telegram-login" {
   export interface TelegramLoginButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     botName: string;
-    dataOnauth: (user: TelegramUser) => void;
+    dataOnauth?: (user: TelegramUser) => void;
+    dataAuthUrl?: string;
     requestAccess?: "write";
     usePic?: boolean;
     cornerRadius?: number;
