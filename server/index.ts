@@ -19,17 +19,22 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false }));
 
 // Allow Telegram OAuth iframe by overriding restrictive upstream CSP
+// app.use((_, res, next) => {
+//   res.setHeader(
+//     "Content-Security-Policy",
+//     "default-src 'self'; " +
+//     "frame-src 'self' https://oauth.telegram.org; " +
+//     "frame-ancestors 'self' https://oauth.telegram.org http://77.110.104.123; " +
+//     "img-src 'self' data: https:; " +
+//     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org; " +
+//     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+//     "font-src 'self' https://fonts.gstatic.com;"
+//    );
+//   next();
+// });
+
 app.use((_, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; " +
-    "frame-src 'self' https://oauth.telegram.org; " +
-    "frame-ancestors 'self' https://oauth.telegram.org http://77.110.104.123; " +
-    "img-src 'self' data: https:; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "font-src 'self' https://fonts.gstatic.com;"
-   );
+  res.removeHeader('Content-Security-Policy');
   next();
 });
 
