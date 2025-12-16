@@ -11,13 +11,13 @@ declare module "express-serve-static-core" {
 export function authenticateJWT(): RequestHandler {
   return (req, res, next) => {
     try {
-      const authHeader = req.headers["authorization"];
+      const token = req.cookies.auth_token;
 
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      if (!token) {
         return res.status(401).json({ error: "Unauthorized: Missing token" });
       }
 
-      const token = authHeader.slice("Bearer ".length).trim();
+      
       const jwtSecret = process.env.JWT_SECRET;
 
       if (!jwtSecret) {

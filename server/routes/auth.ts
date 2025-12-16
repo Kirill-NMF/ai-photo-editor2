@@ -1,4 +1,5 @@
 import { Router } from "express";
+import cookieParser from 'cookie-parser';
 import jwt from "jsonwebtoken";
 import { storage } from "../storage";
 import { checkTelegramAuth } from "../utils/telegramAuth";
@@ -15,10 +16,11 @@ interface TelegramAuthPayload {
 }
 
 const authRouter = Router();
+authRouter.use(cookieParser());
 
-authRouter.post("/telegram/callback", async (req, res) => {
+authRouter.get("/telegram/callback", async (req, res) => {
   try {
-    const telegramData: TelegramAuthPayload = req.body;
+    const telegramData: TelegramAuthPayload = req.query;
 
     if (!telegramData || typeof telegramData !== "object") {
       return res.status(400).json({ error: "Invalid request payload" });
@@ -81,7 +83,8 @@ authRouter.post("/telegram/callback", async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    return res.status(200).json({ token });
+    res.cookie('auth_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+    return res.redirect('/');
   } catch (error) {
     console.error("Telegram auth callback error:", error);
     return res.status(500).json({
