@@ -18,6 +18,15 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
+// Allow Telegram OAuth iframe by overriding restrictive upstream CSP
+app.use((_, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; frame-src 'self' https://oauth.telegram.org; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'self' 'unsafe-inline';",
+  );
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
