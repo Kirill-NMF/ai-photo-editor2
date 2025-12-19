@@ -87,6 +87,9 @@ authRouter.get("/telegram/callback", async (req, res) => {
     return res.redirect('/');
   } catch (error) {
     console.error("Telegram auth callback error:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Error details:", JSON.stringify(error, null, 2));
+
     return res.status(500).json({
       error: "Failed to authenticate with Telegram",
     });
