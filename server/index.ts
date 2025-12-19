@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import authRouter from "./routes/auth";
 import { setupVite, serveStatic, log } from "./vite";
@@ -17,6 +18,7 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // Allow Telegram OAuth iframe by overriding restrictive upstream CSP
 // app.use((_, res, next) => {
