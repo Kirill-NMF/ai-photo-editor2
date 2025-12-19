@@ -15,7 +15,7 @@ export default function TelegramLogin() {
     script.setAttribute("data-size", "large");
     script.setAttribute(
       "data-auth-url",
-      "http://77.110.104.123:5000/api/auth/telegram/callback",
+      "http://ai-photo-editor.ru/api/auth/telegram/callback",
     );
     script.setAttribute("data-request-access", "write");
     script.async = true;
