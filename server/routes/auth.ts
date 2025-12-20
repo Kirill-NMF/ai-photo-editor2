@@ -1,8 +1,9 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import cookieParser from 'cookie-parser';
 import jwt from "jsonwebtoken";
 import { storage } from "../storage";
 import { checkTelegramAuth } from "../utils/telegramAuth";
+import { authMiddleware, type AuthRequest } from "../middleware/auth";
 
 interface TelegramAuthPayload {
   id?: number | string;
@@ -27,7 +28,6 @@ authRouter.get("/telegram/callback", async (req, res) => {
     }
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    // console.log(" =", botToken); // temporary debug log
     if (!botToken) {
       console.error("TELEGRAM_BOT_TOKEN is not configured");
       return res.status(500).json({ error: "Server misconfiguration" });
@@ -48,7 +48,6 @@ authRouter.get("/telegram/callback", async (req, res) => {
 
     const isValid = checkTelegramAuth(normalizedData, botToken);
 
-    
     if (!isValid) {
       return res.status(401).json({ error: "Unauthorized: Invalid hash" });
     }
@@ -94,6 +93,10 @@ authRouter.get("/telegram/callback", async (req, res) => {
       error: "Failed to authenticate with Telegram",
     });
   }
+});
+
+authRouter.get("/me", authMiddleware, (req: AuthRequest, res: Response) => {
+  res.status(200).json(req.user);
 });
 
 export default authRouter;
