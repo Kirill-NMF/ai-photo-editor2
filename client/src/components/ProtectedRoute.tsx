@@ -12,37 +12,32 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
 
   useEffect(() => {
-    if (!isLoading && (!token || !isAuthenticated)) {
+    if (!isLoading && !isAuthenticated) {
       toast({
         title: "Unauthorized",
         description: "You need to log in to access this page. Redirecting...",
         variant: "destructive",
       });
       const timer = setTimeout(() => {
-        navigate("/");
+        navigate("/login");
       }, 400);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading, navigate, toast, token]);
+  }, [isAuthenticated, isLoading, navigate, toast]);
 
-  if (token && isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
       </div>
     );
   }
 
-  if (!token || !isAuthenticated) {
-    return null;
+  if (isAuthenticated) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return null;
 }
