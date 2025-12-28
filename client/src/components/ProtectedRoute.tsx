@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -18,26 +20,24 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         description: "You need to log in to access this page. Redirecting...",
         variant: "destructive",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
+      const timer = setTimeout(() => {
+        navigate("/login");
+      }, 400);
+      return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading, toast]);
+  }, [isAuthenticated, isLoading, navigate, toast]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
+  if (isAuthenticated) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return null;
 }

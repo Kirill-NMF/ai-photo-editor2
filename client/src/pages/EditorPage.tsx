@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "wouter";
 import type { UploadResult } from "@uppy/core";
 import UploadZone from "@/components/UploadZone";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { ObjectUploader, type ObjectUploaderRef } from "@/components/ObjectUploader";
 import ImageCanvas from "@/components/ImageCanvas";
-import PromptInput from "@/components/PromptInput";
 import EditHistory, { type HistoryItem } from "@/components/EditHistory";
 import PromptSuggestions from "@/components/PromptSuggestions";
 import ProcessingIndicator from "@/components/ProcessingIndicator";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -17,11 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Upload as UploadIcon, Sparkles } from "lucide-react";
+import { ArrowLeft, Upload as UploadIcon, Sparkles, Menu } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Image, Edit } from "@shared/schema";
 import { EditorCache, debounce } from "@/utils/editorCache";
+import MobileBottomSheet from "@/components/MobileBottomSheet";
+import MobileSideDrawer from "@/components/MobileSideDrawer";
+import { useRateLimit } from "@/contexts/RateLimitContext";
+import { LimitReachedModal } from "@/components/LimitReachedModal";
+import { PromoCodeSuccessModal } from "@/components/PromoCodeSuccessModal";
 
 type EditWithUI = Edit & { isSaved: boolean };
 
@@ -34,18 +39,33 @@ export default function EditorPage() {
   const [currentBaseEditId, setCurrentBaseEditId] = useState<number | null>(null);
   const [overwriteLastSave, setOverwriteLastSave] = useState(false);
   const [promptText, setPromptText] = useState("");
-  const [apiProvider, setApiProvider] = useState<"huggingface" | "gemini">("huggingface");
+  const [apiProvider, setApiProvider] = useState<"huggingface" | "gemini">("gemini");
   const { toast } = useToast();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
   
+  // Rate limiting state
+  const { remaining, isAdmin, refresh: refreshRateLimit } = useRateLimit();
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  
+  // Mobile state management
+  const [isMobile, setIsMobile] = useState(false);
+  const [showQuickSuggestions, setShowQuickSuggestions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  
   const hasAttemptedRestore = useRef(false);
   const currentRestoreToken = useRef<number>(0);
+  const isInitializing = useRef(true); // Prevent cache saves during initial load
+  const uploaderRef = useRef<ObjectUploaderRef>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   // Keep refs in sync with state for debounced saves
   const uploadedImageRef = useRef(uploadedImage);
   const editsRef = useRef(edits);
   const currentBaseEditIdRef = useRef(currentBaseEditId);
+  const showComparisonRef = useRef(showComparison);
   const overwriteLastSaveRef = useRef(overwriteLastSave);
   const promptTextRef = useRef(promptText);
 
@@ -53,16 +73,42 @@ export default function EditorPage() {
     uploadedImageRef.current = uploadedImage;
     editsRef.current = edits;
     currentBaseEditIdRef.current = currentBaseEditId;
+    showComparisonRef.current = showComparison;
     overwriteLastSaveRef.current = overwriteLastSave;
     promptTextRef.current = promptText;
-  }, [uploadedImage, edits, currentBaseEditId, overwriteLastSave, promptText]);
+  }, [uploadedImage, edits, currentBaseEditId, showComparison, overwriteLastSave, promptText]);
+
+  // Screen size detection
+  const [isMediumScreen, setIsMediumScreen] = useState(false);
+  
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsMediumScreen(width >= 768 && width < 1024); // Between tablet and desktop (lg breakpoint)
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('[EditorPage] State changed:', {
+      showComparison,
+      currentBaseEditId,
+      editsCount: edits.length
+    });
+  }, [showComparison, currentBaseEditId, edits.length]);
 
   const mockSuggestions = [
-    { id: 1, prompt: "Make the sky more dramatic with sunset colors", category: "lighting" },
-    { id: 2, prompt: "Add warm golden hour tones throughout", category: "color" },
-    { id: 3, prompt: "Increase contrast and saturation", category: "color" },
-    { id: 4, prompt: "Apply vintage film effect", category: "style" },
-    { id: 5, prompt: "Add soft bokeh background blur", category: "effects" }
+    { id: 1, prompt: "Render the subject with a 50% more athletic physique. Keep the clothing exactly the same, but show the physical changes through the fabric.", category: "Change body" },
+    { id: 2, prompt: "Dress the user in asap rocky like vibe clothing to be made entirely of flowing, reflective liquid gold. High contrast reflections, expensive luxury look.", category: "Change clothes" },
+    { id: 3, prompt: "Place a colossal, building-sized pigeon (bird) behind the user it has godzila head with fire-red eyes walking in the city background. It should look menacing like Godzilla. Low angle shot.", category: "Background object" },
+    { id: 4, prompt: "Apply a thermal heat-map aura outlining the body. The edges of the person should glow bright orange and red (hot), fading into deep blue (cold). Add distortion like a melted VHS tape around the limbs.", category: "Cool aura" },
+    { id: 5, prompt: "Transform the image into a cracked, 17th-century oil painting. Deep shadows (chiaroscuro), visible heavy brushstrokes, and a golden varnish finish. it's like rap album cover but without any writings", category: "Adjust style" }
   ];
 
   const handleGetUploadParameters = async () => {
@@ -117,6 +163,9 @@ export default function EditorPage() {
       
       // Load cached state for this image (if any)
       loadCachedState(image.id);
+      
+      // Allow cache saves now that upload is complete
+      isInitializing.current = false;
 
       toast({
         title: "Image uploaded successfully",
@@ -178,8 +227,17 @@ export default function EditorPage() {
         setEdits(cached.edits || []);
       }
       setCurrentBaseEditId(cached.currentBaseEditId);
+      
+      // Restore showComparison, or auto-enable if there are edits
+      const shouldShowComparison = cached.showComparison || 
+        (cached.edits && cached.edits.length > 0);
+      setShowComparison(shouldShowComparison);
+      
       setPromptText(cached.generateInputText);
       setOverwriteLastSave(cached.overwriteLastSave);
+      
+      console.log('[EditorPage] Restored showComparison:', shouldShowComparison);
+      console.log('[EditorPage] Restored currentBaseEditId:', cached.currentBaseEditId);
     }
   };
 
@@ -218,6 +276,9 @@ export default function EditorPage() {
     // Set as last active
     EditorCache.setLastActiveImageId(imageId);
     
+    // Allow cache saves now that initialization is complete
+    isInitializing.current = false;
+    
     console.log('[EditorPage] Session restored successfully');
   };
 
@@ -245,7 +306,7 @@ export default function EditorPage() {
   // Save state to cache using refs for latest values
   const saveToCacheFromRefs = useCallback(() => {
     const image = uploadedImageRef.current;
-    if (!image) return;
+    if (!image || isInitializing.current) return; // Don't save during initialization
     
     // Cancel any pending debounced saves to prevent stale data from overwriting
     debouncedSaveRef.current.cancel();
@@ -253,6 +314,7 @@ export default function EditorPage() {
     EditorCache.save(image.id, {
       edits: editsRef.current,
       currentBaseEditId: currentBaseEditIdRef.current,
+      showComparison: showComparisonRef.current,
       generateInputText: promptTextRef.current,
       overwriteLastSave: overwriteLastSaveRef.current,
     });
@@ -262,23 +324,24 @@ export default function EditorPage() {
   const debouncedSaveRef = useRef(
     debounce(() => {
       const image = uploadedImageRef.current;
-      if (!image) return;
+      if (!image || isInitializing.current) return; // Don't save during initialization
       
       EditorCache.save(image.id, {
         edits: editsRef.current,
         currentBaseEditId: currentBaseEditIdRef.current,
+        showComparison: showComparisonRef.current,
         generateInputText: promptTextRef.current,
         overwriteLastSave: overwriteLastSaveRef.current,
       });
     }, 500)
   );
 
-  // Save to cache immediately when edits, base, or overwrite changes (not debounced)
+  // Save to cache immediately when edits, base, comparison, or overwrite changes (not debounced)
   useEffect(() => {
     if (uploadedImage) {
       saveToCacheFromRefs();
     }
-  }, [edits, currentBaseEditId, overwriteLastSave, uploadedImage, saveToCacheFromRefs]);
+  }, [edits, currentBaseEditId, showComparison, overwriteLastSave, uploadedImage, saveToCacheFromRefs]);
 
   // Save before unmounting
   useEffect(() => {
@@ -312,16 +375,46 @@ export default function EditorPage() {
       
       response = await apiRequest("POST", "/api/edits", requestBody);
 
+      // Parse response first to check for promo code
+      const responseData = await response.json();
+      
+      // Handle promo code response (can be success or error)
+      if (responseData.isPromoCode) {
+        if (responseData.success) {
+          setShowPromoModal(true);
+          refreshRateLimit().catch(err => console.error('Failed to refresh rate limit:', err));
+        } else {
+          // Promo code already used or error
+          throw new Error(responseData.error || responseData.message || "Promo code error");
+        }
+        return;
+      }
+
+      // Now check if response was ok for regular edits
       if (!response.ok) {
-        // Try to parse error response
-        const errorData = await response.json();
-        if (errorData?.message) {
-          throw new Error(errorData.message);
+        // Handle rate limit exceeded (429)
+        if (response.status === 429) {
+          refreshRateLimit().catch(err => console.error('Failed to refresh rate limit:', err));
+          setShowLimitModal(true);
+          return;
+        }
+        
+        // Generic error handling
+        if (responseData?.message || responseData?.error) {
+          throw new Error(responseData.message || responseData.error);
         }
         throw new Error("Failed to generate edit");
       }
 
-      const edit: Edit = await response.json();
+      // Regular edit response - must have edit data
+      if (!responseData.id && !responseData.edit) {
+        throw new Error("Invalid response format from server");
+      }
+      
+      const edit: Edit = responseData.edit || responseData;
+      
+      // Refresh rate limit counter after successful edit (non-blocking)
+      refreshRateLimit().catch(err => console.error('Failed to refresh rate limit:', err));
       
       // Add the new edit to the list
       const newEdit: EditWithUI = {
@@ -343,6 +436,19 @@ export default function EditorPage() {
         title: "Edit complete!",
         description: "Your image has been edited successfully",
       });
+
+      // Auto-refetch edits after 2 seconds to get generated thumbnail
+      // Background worker needs time to generate and save thumbnailUrl to DB
+      setTimeout(async () => {
+        try {
+          console.log('[EditorPage] Refetching edits to get generated thumbnails');
+          const freshEdits = await fetchEditHistory(uploadedImage.id);
+          setEdits(freshEdits);
+        } catch (error) {
+          console.error('[EditorPage] Failed to refetch edits:', error);
+          // Silent fail - user won't notice, will get thumbnail on next page load
+        }
+      }, 2000);
     } catch (error) {
       console.error('Error generating edit:', error);
       
@@ -428,6 +534,7 @@ export default function EditorPage() {
     setCurrentBaseEditId(null);
     setPromptText("");
     setOverwriteLastSave(false);
+    isInitializing.current = true; // Reset flag for next upload
   };
 
   const handleNewProject = () => {
@@ -448,6 +555,7 @@ export default function EditorPage() {
     setCurrentBaseEditId(null);
     setPromptText("");
     setOverwriteLastSave(false);
+    isInitializing.current = true; // Reset flag for next upload
     
     toast({
       title: "New project started",
@@ -461,14 +569,103 @@ export default function EditorPage() {
     debouncedSaveRef.current();
   };
 
-  // Handle suggestion click - append to prompt
+  // Handle suggestion click - replace prompt
   const handleSuggestionSelect = (suggestionText: string) => {
-    const newText = promptText.trim()
-      ? `${promptText} ${suggestionText}`
-      : suggestionText;
-    setPromptText(newText);
+    setPromptText(suggestionText);
     debouncedSaveRef.current();
     console.log('[EditorPage] Suggestion selected:', suggestionText);
+  };
+
+  // Drag-and-drop handlers for upload zone
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only set dragging if we have files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Keep dragging state active while over drop zone (prevents flickering)
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only hide overlay if we're leaving the drop zone entirely
+    // Check if relatedTarget is outside drop zone
+    const relatedTarget = e.relatedTarget as Node;
+    
+    if (dropZoneRef.current && !dropZoneRef.current.contains(relatedTarget)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    const file = files[0];
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload JPEG, PNG, or WebP images only",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (20MB)
+    const maxSize = 20 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 20MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Use ObjectUploader's uppy instance for consistent upload flow
+    try {
+      const uppy = uploaderRef.current?.uppy;
+      if (!uppy) {
+        throw new Error("Uploader not initialized");
+      }
+
+      // Add file to uppy
+      uppy.addFile({
+        name: file.name,
+        type: file.type,
+        data: file,
+      });
+
+      // Start upload - onComplete handler will be called automatically
+      await uppy.upload();
+    } catch (error) {
+      console.error("Error uploading via drag-and-drop:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Build combined history array with original image first
@@ -476,6 +673,7 @@ export default function EditorPage() {
     {
       id: `original-${uploadedImage.id}`,
       resultUrl: uploadedImage.originalUrl,
+      thumbnailUrl: uploadedImage.thumbnailUrl,
       prompt: 'Original',
       createdAt: uploadedImage.createdAt,
       isSaved: false,
@@ -484,6 +682,7 @@ export default function EditorPage() {
     ...edits.map(edit => ({
       id: edit.id,
       resultUrl: edit.resultUrl,
+      thumbnailUrl: edit.thumbnailUrl,
       prompt: edit.prompt,
       createdAt: edit.createdAt,
       isSaved: edit.isSaved,
@@ -494,7 +693,28 @@ export default function EditorPage() {
   if (!uploadedImage) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-        <div className="w-full max-w-3xl space-y-12">
+        <div 
+          ref={dropZoneRef}
+          className="relative w-full max-w-3xl space-y-12"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Overlay when dragging */}
+          {isDragging && (
+            <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg pointer-events-none z-10">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary mb-2">
+                  Drop image here
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Release to upload
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold tracking-tight">Start Editing</h1>
             <p className="text-lg text-muted-foreground">
@@ -503,19 +723,22 @@ export default function EditorPage() {
           </div>
           <div className="flex justify-center">
             <ObjectUploader
+              ref={uploaderRef}
               maxNumberOfFiles={1}
               maxFileSize={20 * 1024 * 1024}
               onGetUploadParameters={handleGetUploadParameters}
               onComplete={handleUploadComplete}
-              buttonClassName="h-72 w-full max-w-2xl border-2 border-dashed rounded-lg hover-elevate active-elevate-2 transition-all duration-200"
+              buttonClassName={`h-72 w-full max-w-2xl border-2 border-dashed rounded-lg hover-elevate active-elevate-2 transition-all duration-200 ${isDragging ? 'border-primary bg-primary/5' : ''}`}
             >
               <div className="flex flex-col items-center gap-6">
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
                   <UploadIcon className="h-10 w-10 text-primary" />
                 </div>
                 <div className="space-y-2 text-center">
-                  <p className="text-xl font-semibold">Click to upload an image</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xl font-semibold">
+                    Click or drag'n'drop to upload an image
+                  </p>
+                  <p className="text-sm" style={{ color: '#cecece' }}>
                     Supports JPEG, PNG, WebP (max 20MB)
                   </p>
                 </div>
@@ -527,25 +750,189 @@ export default function EditorPage() {
     );
   }
 
-  return (
-    <div className="flex h-[calc(100vh-4rem)] bg-background">
-      {/* Left Sidebar - Edit History */}
-      <div className="w-80 border-r flex-shrink-0">
-        <EditHistory
+  return isMobile ? (
+    // MOBILE LAYOUT
+    <div className="flex flex-col min-h-screen bg-background">
+      {/* Mobile Header with Hamburger Menu */}
+      <header className="flex justify-between items-center p-4 border-b bg-background sticky top-0 z-10">
+        <h1 className="text-lg font-bold">Photo Editor</h1>
+        <button
+          onClick={() => setShowMenu(true)}
+          className="p-2 hover-elevate active-elevate-2 rounded-lg"
+          aria-label="Open menu"
+          data-testid="button-menu-mobile"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-4">
+        {/* Image Preview */}
+        <div className="mb-4 relative">
+          {showComparison ? (
+            (() => {
+              const baseEdit = currentBaseEditId !== null 
+                ? edits.find(e => e.id === currentBaseEditId)
+                : null;
+              const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
+              const afterImageUrl = edits[0]?.resultUrl || uploadedImage.currentUrl;
+              const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
+              
+              return (
+                <div className="rounded-lg overflow-hidden shadow-lg">
+                  <BeforeAfterSlider
+                    beforeImage={baseImageUrl}
+                    afterImage={afterImageUrl}
+                    beforeLabel={isUsingBase ? "Selected Base" : "Original"}
+                    afterLabel="Current Edit"
+                    afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
+                  />
+                </div>
+              );
+            })()
+          ) : (
+            <img
+              src={uploadedImage.currentUrl}
+              alt="Editor preview"
+              className="w-full h-auto rounded-lg shadow-lg"
+              data-testid="img-editor-preview"
+            />
+          )}
+          {isProcessing && (
+            <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+              <ProcessingIndicator progress={65} />
+            </div>
+          )}
+        </div>
+
+        {/* Prompt Field - ABOVE Provider */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold mb-2">Describe Your Edit</label>
+          <Textarea
+            placeholder="E.g., 'Make the sky more dramatic' or 'Add warm tones'"
+            value={promptText}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handlePromptChange(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' && !e.shiftKey && promptText.trim() && !isProcessing) {
+                e.preventDefault();
+                handlePromptSubmit(promptText);
+              }
+            }}
+            disabled={isProcessing}
+            className="min-h-[100px] resize-none"
+            data-testid="input-prompt-mobile"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Press Enter to generate, Shift + Enter for new line
+          </p>
+        </div>
+
+        {/* AI Provider Dropdown - BELOW Prompt */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold mb-2">AI Provider</label>
+          <Select 
+            value={apiProvider} 
+            onValueChange={(value: "huggingface" | "gemini") => setApiProvider(value)}
+            data-testid="select-provider-mobile"
+          >
+            <SelectTrigger className="w-full" data-testid="trigger-provider-mobile">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gemini" data-testid="option-gemini-mobile">
+                Gemini 2.5 Flash Image (Recommended)
+              </SelectItem>
+              <SelectItem value="huggingface" data-testid="option-huggingface-mobile">
+                HuggingFace
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Generate Button */}
+        <Button
+          onClick={() => handlePromptSubmit(promptText)}
+          disabled={isProcessing || !promptText.trim()}
+          className="w-full mb-3"
+          size="lg"
+          data-testid="button-generate-mobile"
+        >
+          {isProcessing ? 'Generating...' : 'Generate'}
+        </Button>
+
+        {/* Quick Suggestions Button */}
+        <Button
+          onClick={() => setShowQuickSuggestions(true)}
+          variant="outline"
+          className="w-full gap-2"
+          size="lg"
+          data-testid="button-show-suggestions"
+        >
+          <Sparkles className="h-4 w-4" />
+          Quick Suggestions
+        </Button>
+      </main>
+
+      {/* Bottom Sheets and Drawers */}
+      {showQuickSuggestions && (
+        <MobileBottomSheet
+          onClose={() => setShowQuickSuggestions(false)}
+          suggestions={mockSuggestions}
+          onSelect={(prompt) => {
+            handleSuggestionSelect(prompt);
+            setShowQuickSuggestions(false);
+          }}
+        />
+      )}
+
+      {showMenu && (
+        <MobileSideDrawer
+          onClose={() => setShowMenu(false)}
           historyItems={historyItems}
+          onUploadNew={handleReset}
+          onNewProject={handleNewProject}
+          onUseAsBase={handleUseAsBase}
+          onSave={handleSaveEdit}
           activeItemId={edits[0]?.id}
           currentBaseId={currentBaseEditId}
-          overwriteLastSave={overwriteLastSave}
-          onOverwriteToggle={setOverwriteLastSave}
-          onSave={handleSaveEdit}
-          onUseAsBase={handleUseAsBase}
         />
-      </div>
+      )}
+    </div>
+  ) : (
+    // DESKTOP AND MEDIUM SCREEN LAYOUT
+    <div className="container mx-auto px-4 py-8 max-w-[1400px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+        {/* Left Sidebar - Edit History (Desktop Only >= 1024px) */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-4 h-[calc(100vh-2rem)]">
+            <EditHistory
+              historyItems={historyItems}
+              activeItemId={edits[0]?.id}
+              currentBaseId={currentBaseEditId}
+              overwriteLastSave={overwriteLastSave}
+              onOverwriteToggle={setOverwriteLastSave}
+              onSave={handleSaveEdit}
+              onUseAsBase={handleUseAsBase}
+            />
+          </div>
+        </aside>
 
-      {/* Main Canvas Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 p-8 overflow-auto">
-          <div className="mb-6 flex items-center gap-3">
+        {/* Main Content Area */}
+        <div className="flex flex-col gap-6">
+          {/* Top Actions with Hamburger Menu for Medium Screens */}
+          <div className="flex gap-3">
+            {isMediumScreen && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowMenu(true)} 
+                data-testid="button-menu-medium"
+                className="lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <Button variant="ghost" onClick={handleReset} data-testid="button-reset" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Upload Different Image
@@ -554,54 +941,73 @@ export default function EditorPage() {
               New Project
             </Button>
           </div>
-          
-          <div className="relative max-w-5xl mx-auto">
-            {isProcessing && <ProcessingIndicator progress={65} />}
-            
-            {showComparison ? (
-              (() => {
-                const baseEdit = currentBaseEditId !== null 
-                  ? edits.find(e => e.id === currentBaseEditId)
-                  : null;
-                const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
-                const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
-                
-                return (
-                  <div className="rounded-lg overflow-hidden shadow-lg">
-                    <BeforeAfterSlider
-                      beforeImage={baseImageUrl}
-                      afterImage={uploadedImage.currentUrl}
-                      beforeLabel={isUsingBase ? "Base" : "Original"}
-                      afterLabel="Edited"
-                      afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
-                    />
-                  </div>
-                );
-              })()
-            ) : (
-              <ImageCanvas imageUrl={uploadedImage.currentUrl} />
-            )}
-          </div>
-        </div>
 
-        {/* Bottom Prompt Area */}
-        <div className="border-t bg-card/50 backdrop-blur-sm">
-          <div className="max-w-5xl mx-auto p-6 space-y-4">
-            <PromptSuggestions
-              suggestions={mockSuggestions}
-              onSelect={handleSuggestionSelect}
-            />
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <PromptInput 
-                  value={promptText}
-                  onChange={handlePromptChange}
-                  onSubmit={handlePromptSubmit} 
-                  isProcessing={isProcessing} 
-                />
+          {/* Editor Area - Image and Control Panel Side by Side */}
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6">
+            {/* Image Preview */}
+            <div className="flex justify-center items-start">
+              <div className="relative w-full max-w-[450px] lg:max-w-[600px] 2xl:max-w-[750px]">
+                {showComparison ? (
+                  (() => {
+                    const baseEdit = currentBaseEditId !== null 
+                      ? edits.find(e => e.id === currentBaseEditId)
+                      : null;
+                    const baseImageUrl = baseEdit?.resultUrl || uploadedImage.originalUrl;
+                    const afterImageUrl = edits[0]?.resultUrl || uploadedImage.currentUrl;
+                    const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
+                    
+                    return (
+                      <div className="rounded-lg overflow-hidden shadow-lg">
+                        <BeforeAfterSlider
+                          beforeImage={baseImageUrl}
+                          afterImage={afterImageUrl}
+                          beforeLabel={isUsingBase ? "Selected Base" : "Original"}
+                          afterLabel="Current Edit"
+                          afterPrompt={edits.length > 0 ? edits[0]?.prompt : undefined}
+                        />
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <ImageCanvas imageUrl={uploadedImage.currentUrl} />
+                )}
+                {isProcessing && (
+                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                    <ProcessingIndicator progress={65} />
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col gap-1.5 pb-0.5">
-                <label className="text-xs font-medium text-muted-foreground px-1">
+            </div>
+
+            {/* Control Panel */}
+            <div className="flex flex-col gap-4">
+              {/* Prompt Field - FULL WIDTH, ABOVE AI Provider */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Describe Your Edit
+                </label>
+                <Textarea
+                  placeholder="E.g., 'Make the sky more dramatic with sunset colors' or 'Add warm golden hour tones'"
+                  value={promptText}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handlePromptChange(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' && !e.shiftKey && promptText.trim() && !isProcessing) {
+                      e.preventDefault();
+                      handlePromptSubmit(promptText);
+                    }
+                  }}
+                  disabled={isProcessing}
+                  className="min-h-[120px] resize-none"
+                  data-testid="input-prompt"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Be specific for best results • Press Enter to generate, Shift + Enter for new line
+                </p>
+              </div>
+
+              {/* AI Provider Dropdown - BELOW Prompt */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
                   AI Provider
                 </label>
                 <Select 
@@ -609,32 +1015,95 @@ export default function EditorPage() {
                   onValueChange={(value: "huggingface" | "gemini") => setApiProvider(value)}
                   data-testid="select-provider"
                 >
-                  <SelectTrigger className="w-48 h-9" data-testid="trigger-provider">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                      <SelectValue />
-                    </div>
+                  <SelectTrigger className="w-full" data-testid="trigger-provider">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="huggingface" data-testid="option-huggingface">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Hugging Face</span>
-                        <span className="text-xs text-muted-foreground">(Free)</span>
-                      </div>
-                    </SelectItem>
                     <SelectItem value="gemini" data-testid="option-gemini">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Gemini</span>
-                        <span className="text-xs text-muted-foreground">(Paid)</span>
-                      </div>
+                      Gemini 2.5 Flash Image (Recommended)
+                    </SelectItem>
+                    <SelectItem value="huggingface" data-testid="option-huggingface">
+                      HuggingFace
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Generate Button with Rate Limit Counter */}
+              <div className="space-y-2">
+                <Button
+                  onClick={() => handlePromptSubmit(promptText)}
+                  disabled={isProcessing || !promptText.trim()}
+                  className="w-full"
+                  size="lg"
+                  data-testid="button-generate"
+                >
+                  {isProcessing ? 'Generating...' : 'Generate'}
+                </Button>
+                
+                {!isAdmin && (
+                  <p className="text-xs text-center text-muted-foreground" data-testid="text-rate-limit">
+                    {remaining} {remaining === 1 ? 'edit' : 'edits'} remaining this month
+                  </p>
+                )}
+              </div>
+
+              {/* Quick Suggestions - COMPACT VERSION */}
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold mb-3">Quick Suggestions</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {mockSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      onClick={() => handleSuggestionSelect(suggestion.prompt)}
+                      className="p-3 text-left rounded-lg border hover-elevate active-elevate-2 transition-all group"
+                      data-testid={`suggestion-${suggestion.id}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {suggestion.prompt}
+                          </p>
+                          {suggestion.category && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {suggestion.category}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Side Drawer for Medium Screens */}
+      {showMenu && (
+        <MobileSideDrawer
+          onClose={() => setShowMenu(false)}
+          historyItems={historyItems}
+          onUploadNew={handleReset}
+          onNewProject={handleNewProject}
+          onUseAsBase={handleUseAsBase}
+          onSave={handleSaveEdit}
+          activeItemId={edits[0]?.id}
+          currentBaseId={currentBaseEditId}
+        />
+      )}
+      
+      {/* Rate Limit Modals */}
+      <LimitReachedModal 
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+      />
+      <PromoCodeSuccessModal 
+        isOpen={showPromoModal}
+        onClose={() => setShowPromoModal(false)}
+      />
     </div>
   );
 }

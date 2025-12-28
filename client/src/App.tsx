@@ -8,11 +8,13 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Header from "@/components/Header";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import HomePage from "@/pages/HomePage";
+import LoginPage from "@/pages/Login";
 import OnboardingPage from "@/pages/OnboardingPage";
 import EditorPage from "@/pages/EditorPage";
 import GalleryPage from "@/pages/GalleryPage";
 import AccountPage from "@/pages/AccountPage";
 import NotFound from "@/pages/not-found";
+import { RateLimitProvider } from "@/contexts/RateLimitContext";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -23,7 +25,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="flex items-center gap-2 p-4 border-b">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
           </header>
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-y-auto">
             {children}
           </main>
         </div>
@@ -36,6 +38,7 @@ function RouterContent() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/login" component={LoginPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/editor/:imageId">
         <DashboardLayout><EditorPage /></DashboardLayout>
@@ -93,9 +96,11 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AppContent />
-      </TooltipProvider>
+      <RateLimitProvider>
+        <TooltipProvider>
+          <AppContent />
+        </TooltipProvider>
+      </RateLimitProvider>
     </QueryClientProvider>
   );
 }

@@ -1,31 +1,6 @@
 // Integration: Replit Auth (blueprint:javascript_log_in_with_replit)
-import { useQuery } from "@tanstack/react-query";
-import type { User } from "@shared/schema";
+import { useAuthContext } from "@/contexts/AuthContext";
 
-export function useAuth() {
-  const { data: user, isLoading } = useQuery<User | null>({
-    queryKey: ["/api/auth/user"],
-    retry: false,
-    queryFn: async () => {
-      const res = await fetch("/api/auth/user", {
-        credentials: "include",
-      });
-
-      if (res.status === 401) {
-        return null;
-      }
-
-      if (!res.ok) {
-        throw new Error(`${res.status}: ${res.statusText}`);
-      }
-
-      return await res.json();
-    },
-  });
-
-  return {
-    user: user === null ? undefined : user,
-    isLoading,
-    isAuthenticated: !!user,
-  };
-}
+export const useAuth = () => {
+  return useAuthContext();
+};

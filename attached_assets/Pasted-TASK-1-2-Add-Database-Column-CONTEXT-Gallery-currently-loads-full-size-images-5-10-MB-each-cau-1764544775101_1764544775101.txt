@@ -1,0 +1,107 @@
+TASK 1.2: Add Database Column
+CONTEXT
+Gallery currently loads full-size images (5-10 MB each), causing slow loading times. We will generate WebP thumbnails (400x225px, ~25 KB) and store their URLs in the database.
+Current schema:
+TypeScript
+images {
+  originalUrl: text  // Full-size image (7 MB)
+  currentUrl: text   // Current version
+  // thumbnailUrl: missing! ← We need to add this
+}
+After this task:
+TypeScript
+images {
+  originalUrl: text
+  currentUrl: text
+  thumbnailUrl: text  // ← NEW: WebP thumbnail URL (~25 KB)
+}
+GOAL
+Add thumbnailUrl column to images table to store WebP thumbnail URLs.
+IMPLEMENTATION
+Step 1: Update Schema
+File: shared/schema.ts
+Find this section (around line 30-40):
+TypeScript
+export const images = pgTable("images", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  parentImageId: integer("parent_image_id").references((): any => images.id, { onDelete: "cascade" }),
+  isOriginal: integer("is_original").notNull().default(1),
+  originalUrl: text("original_url").notNull(),
+  currentUrl: text("current_url").notNull(),
+  // ← ADD NEW LINE HERE
+  fileName: varchar("file_name").notNull(),
+  fileSize: integer("file_size").notNull(),
+  // ... rest of schema
+});
+Add this line after currentUrl:
+TypeScript
+thumbnailUrl: text("thumbnail_url"),
+Complete section should look like:
+TypeScript
+export const images = pgTable("images", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  parentImageId: integer("parent_image_id").references((): any => images.id, { onDelete: "cascade" }),
+  isOriginal: integer("is_original").notNull().default(1),
+  originalUrl: text("original_url").notNull(),
+  currentUrl: text("current_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),  // ← NEW LINE
+  fileName: varchar("file_name").notNull(),
+  fileSize: integer("file_size").notNull(),
+  // ... rest of schema
+});
+Step 2: Apply Migration
+Run database migration to create the column:
+Bash
+npm run db:push
+Expected output:
+Plain Text
+✓ Applying migration...
+✓ Migration complete
+TESTING
+Test 1: Verify Column in Schema File
+Bash
+grep "thumbnailUrl" shared/schema.ts
+Should output:
+TypeScript
+thumbnailUrl: text("thumbnail_url"),
+Test 2: Verify Column in Database
+Run this SQL query (if you have DB access):
+SQL
+SELECT column_name, data_type, is_nullable 
+FROM information_schema.columns 
+WHERE table_name = 'images' AND column_name = 'thumbnail_url';
+Expected result:
+Plain Text
+column_name   | data_type | is_nullable
+--------------+-----------+------------
+thumbnail_url | text      | YES
+Test 3: Check Application Starts
+Bash
+npm run dev
+Application should start without errors. Check logs for:
+Plain Text
+[express]: # "serving on port 5000"
+SUCCESS CRITERIA
+✅ thumbnailUrl: text("thumbnail_url"), line added to shared/schema.ts
+✅ Line is placed after currentUrl and before fileName
+✅ npm run db:push completes successfully
+✅ No TypeScript errors in schema file
+✅ Application starts without errors
+IMPORTANT NOTES
+Why nullable?
+Column is nullable (no .notNull()) because:
+Existing images don't have thumbnails yet
+Thumbnails are generated asynchronously
+Gallery has fallback to currentUrl
+Why TEXT type?
+URLs can be long (GCS paths with tenant prefixes)
+TEXT has no length limit (vs VARCHAR)
+Standard for URL storage in PostgreSQL
+Backward compatibility
+Existing images will have thumbnailUrl = null
+Gallery will use fallback: thumbnailUrl || currentUrl
+No breaking changes to existing code

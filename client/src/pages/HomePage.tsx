@@ -33,7 +33,7 @@ export default function HomePage() {
                   Get Started Free
                 </Button>
               </Link>
-              <Link href="/editor">
+              <Link href="/login">
                 <Button variant="outline" size="lg" className="text-lg h-12 px-8" data-testid="button-try-editor">
                   Try Editor
                 </Button>

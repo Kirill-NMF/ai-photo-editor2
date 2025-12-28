@@ -136,18 +136,8 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-project-modal">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>{project.name || `Project #${project.id}`}</span>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setDeleteConfirmOpen(true)}
-                className="gap-2"
-                data-testid="button-delete-project"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete Project
-              </Button>
+            <DialogTitle>
+              {project.name || `Project #${project.id}`}
             </DialogTitle>
           </DialogHeader>
 
@@ -159,13 +149,14 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                 <Card className="overflow-hidden" data-testid="card-original-image">
                   <div className="aspect-video relative overflow-hidden bg-muted">
                     <img
-                      src={project.originalImage.currentUrl}
+                      src={project.originalImage.thumbnailUrl || project.originalImage.currentUrl}
                       alt="Original"
                       className="w-full h-full object-contain"
+                      loading="lazy"
                       data-testid="img-original"
                     />
                   </div>
-                  <div className="p-3">
+                  <div className="p-3 space-y-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -175,6 +166,16 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                     >
                       <Download className="h-4 w-4" />
                       Download Original
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteConfirmOpen(true)}
+                      className="gap-2 w-full"
+                      data-testid="button-delete-project"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Project
                     </Button>
                   </div>
                 </Card>
@@ -196,9 +197,10 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                     >
                       <div className="aspect-video relative overflow-hidden bg-muted">
                         <img
-                          src={image.currentUrl}
+                          src={image.thumbnailUrl || image.currentUrl}
                           alt={image.fileName}
                           className="w-full h-full object-contain"
+                          loading="lazy"
                           data-testid={`img-saved-${image.id}`}
                         />
                       </div>
@@ -242,9 +244,10 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                     >
                       <div className="aspect-video relative overflow-hidden bg-muted">
                         <img
-                          src={edit.resultUrl}
+                          src={edit.thumbnailUrl || edit.resultUrl}
                           alt={edit.prompt}
                           className="w-full h-full object-contain"
+                          loading="lazy"
                           data-testid={`img-edit-${edit.id}`}
                         />
                       </div>

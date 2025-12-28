@@ -1,0 +1,216 @@
+TASK 6.1: Integrate Thumbnail Generation into Edit Flow
+
+CONTEXT
+
+Currently thumbnails are generated for:
+
+•
+✅ New uploads (Task 5.1 completed)
+
+•
+❌ AI edits (NOT YET)
+
+When user edits an image with AI, a new image record is created with the edited result. This new image also needs a thumbnail for the gallery.
+
+GOAL
+
+Add thumbnail generation to the edit flow, so edited images automatically get thumbnails.
+
+IMPLEMENTATION
+
+Find Edit Endpoint
+
+File: server/routes.ts
+
+Search for: POST /api/images/:id/edit or similar edit endpoint
+
+Look for code that creates new image after edit:
+
+TypeScript
+
+
+const editedImage = await storage.createImage({
+  userId: req.user!.id,
+  projectId: originalImage.projectId,
+  parentImageId: imageId,
+  isOriginal: 0,
+  originalUrl: editResult.url,  // ← Edited image URL
+  currentUrl: editResult.url,
+  // ...
+});
+
+return res.json({ success: true, image: editedImage });
+
+
+Add Thumbnail Generation
+
+Add after createImage and before return:
+
+TypeScript
+
+
+const editedImage = await storage.createImage({
+  userId: req.user!.id,
+  projectId: originalImage.projectId,
+  parentImageId: imageId,
+  isOriginal: 0,
+  originalUrl: editResult.url,
+  currentUrl: editResult.url,
+  // ...
+});
+
+// Generate thumbnail for edited image (fire-and-forget)
+generateThumbnailInBackground(editedImage.id, editedImage.originalUrl)
+  .catch(err => console.error('[Edit] Thumbnail generation failed:', err));
+
+return res.json({ success: true, image: editedImage });
+
+
+Verify Import
+
+Make sure generateThumbnailInBackground is imported at the top of the file:
+
+TypeScript
+
+
+import { generateThumbnailInBackground } from './thumbnailHelpers';
+
+
+TESTING
+
+Test 1: Edit an Image
+
+1.
+Go to gallery
+
+2.
+Click "Edit" on any image
+
+3.
+Apply any AI edit (e.g., "make it brighter")
+
+4.
+Wait for edit to complete
+
+Test 2: Check Logs
+
+Look for these log messages:
+
+Plain Text
+
+
+[Edit]: # "Edit created successfully"
+[ThumbnailBG]: # "Starting thumbnail generation for image {id}"
+[ThumbnailGenerator]: # "Generating webp thumbnail..."
+[ThumbnailBG]: # "✓ Database updated for image {id}"
+
+
+Test 3: Check Database
+
+SQL
+
+
+SELECT id, file_name, thumbnail_url, is_original 
+FROM images 
+WHERE is_original = 0 
+ORDER BY created_at DESC 
+LIMIT 5;
+
+
+Edited images (is_original = 0) should have thumbnail_url populated.
+
+Test 4: Check Gallery
+
+1.
+Refresh gallery
+
+2.
+Edited images should show thumbnails
+
+3.
+Check Network tab - should load thumb.webp files
+
+SUCCESS CRITERIA
+
+•
+✅ generateThumbnailInBackground called after edit
+
+•
+✅ Import added to routes.ts
+
+•
+✅ No TypeScript errors
+
+•
+✅ Server starts without errors
+
+•
+✅ Edited images get thumbnails automatically
+
+•
+✅ Logs show thumbnail generation for edits
+
+•
+✅ Gallery shows thumbnails for edited images
+
+NOTES
+
+Fire-and-Forget Pattern
+
+Same as upload flow - thumbnail generation doesn't block the edit response:
+
+TypeScript
+
+
+generateThumbnailInBackground(...)
+  .catch(err => console.error(...));  // ← Don't await, don't throw
+
+return res.json(...);  // ← Returns immediately
+
+
+Edit vs Upload
+
+•
+Upload: Uses generateUploadThumbnail() internally
+
+•
+Edit: Also uses generateUploadThumbnail() (works for both!)
+
+•
+Both save thumbnails to /.private/uploads/{id}/thumb.webp
+
+Why This Works
+
+The generateThumbnailInBackground helper:
+
+1.
+Extracts upload ID from path
+
+2.
+Downloads original from GCS
+
+3.
+Generates WebP thumbnail with .rotate()
+
+4.
+Uploads to /.private/uploads/{id}/thumb.webp
+
+5.
+Updates database with /objects/uploads/{id}/thumb.webp
+
+Works for both uploads and edits!
+
+EDGE CASES
+
+What if edit fails?
+
+Edit fails → No new image created → No thumbnail generation triggered → ✅ OK
+
+What if thumbnail generation fails?
+
+Thumbnail fails → Error logged → Gallery uses fallback to original → ✅ OK
+
+What if user edits multiple times?
+
+Each edit creates new image → Each gets thumbnail → ✅ OK
+

@@ -4,23 +4,27 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertImageSchema, edits } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { insertImageSchema, edits, images } from "@shared/schema";
+import { eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
 import { editImageWithHuggingFace } from "./huggingface";
+import { generateThumbnailsBatch, generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
+import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from './rateLimiting';
+import { authenticateJWT } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit Auth middleware
-  await setupAuth(app);
+  const requireAuth = authenticateJWT();
 
   // Auth route - Get current user
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -29,9 +33,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint for thumbnails (checks ACL, no auth required)
+  // Must be BEFORE the main /objects/* route to match first
+  app.get("/objects/uploads/:uploadId/thumb.webp", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const thumbPath = `/objects/uploads/${req.params.uploadId}/thumb.webp`;
+      const objectFile = await objectStorageService.getObjectEntityFile(thumbPath);
+      
+      // Check if thumbnail is public via ACL policy
+      const aclPolicy = await objectStorageService.getObjectAclPolicy(thumbPath);
+      if (aclPolicy?.visibility !== "public") {
+        return res.sendStatus(401);
+      }
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving thumbnail:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
   // Object Storage - Serve private objects with ACL check
-  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
-    const userId = req.user?.claims?.sub;
+  app.get("/objects/:objectPath(*)", requireAuth, async (req, res) => {
+    const userId = req.userId;
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
@@ -54,8 +82,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get presigned upload URL
-  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
+  app.post("/api/objects/upload", requireAuth, async (req, res) => {
     try {
+      const userId = req.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
@@ -66,9 +98,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create image record after upload
-  app.post("/api/images", isAuthenticated, async (req, res) => {
+  app.post("/api/images", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -111,6 +143,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         height: validatedData.height,
       });
 
+      // Generate thumbnail in background (don't await - let it complete async)
+      generateThumbnailInBackground(image.id, image.originalUrl).catch(err => {
+        console.error(`[Upload] Failed to generate thumbnail for image ${image.id}:`, err);
+      });
+
       res.status(201).json(image);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -122,9 +159,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's images
-  app.get("/api/images", isAuthenticated, async (req, res) => {
+  app.get("/api/images", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -138,9 +175,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single image
-  app.get("/api/images/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/images/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -168,9 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update image (e.g., save an edit as the current version)
-  app.put("/api/images/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/images/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -208,9 +245,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create an edit (generate edited image using Gemini)
-  app.post("/api/edits", isAuthenticated, async (req, res) => {
+  app.post("/api/edits", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -223,6 +260,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         provider: z.enum(["huggingface", "gemini"]).default("huggingface"),
       });
       const { imageId, prompt, baseEditId, provider } = editRequestSchema.parse(req.body);
+
+      // === PROMO CODE CHECK ===
+      if (isPromoCode(prompt)) {
+        const result = await applyPromoCode(userId);
+        
+        if (result.success) {
+          return res.json({
+            success: true,
+            isPromoCode: true,
+            message: result.message,
+          });
+        } else {
+          return res.status(400).json({
+            success: false,
+            isPromoCode: true,
+            error: result.message,
+          });
+        }
+      }
+
+      // === RATE LIMIT CHECK ===
+      const rateLimit = await checkRateLimit(userId);
+      
+      if (!rateLimit.allowed) {
+        return res.status(429).json({
+          error: "API limit reached",
+          remaining: 0,
+          resetDate: rateLimit.resetDate,
+          limitReached: true,
+        });
+      }
 
       // Get the image
       const image = await storage.getImage(imageId);
@@ -338,8 +406,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resultUrl: resultPath,
       });
 
+      // === INCREMENT COUNTER (only on success) ===
+      await incrementRateLimit(userId);
+
+      // === GET UPDATED RATE LIMIT ===
+      const newRateLimit = await checkRateLimit(userId);
+
+      // Generate thumbnail in background (fire-and-forget)
+      generateEditThumbnailInBackground(edit.id, resultPath).catch(err => {
+        console.error(`Failed to queue thumbnail generation for edit ${edit.id}:`, err);
+      });
+
       console.log("Edit created successfully:", edit);
-      res.status(201).json(edit);
+      
+      // === RETURN SUCCESS WITH RATE LIMIT INFO ===
+      res.status(201).json({
+        ...edit,
+        rateLimit: {
+          remaining: newRateLimit.remaining,
+          isLastEdit: newRateLimit.isLastEdit,
+          resetDate: newRateLimit.resetDate,
+        },
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
@@ -379,9 +467,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Save an edit as a new image in the gallery
-  app.post("/api/edits/:editId/save", isAuthenticated, async (req, res) => {
+  app.post("/api/edits/:editId/save", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -411,6 +499,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save the edit as an image
       const savedImage = await storage.saveEditAsImage(edit, parentImage, overwriteLastSave);
 
+      // Generate thumbnail for saved edit (fire-and-forget)
+      generateThumbnailInBackground(savedImage.id, savedImage.originalUrl)
+        .catch(err => console.error('[SaveEdit] Thumbnail generation failed:', err));
+
       res.status(201).json({
         image: savedImage,
         message: overwriteLastSave ? "Previous save overwritten" : "Saved as new image",
@@ -426,9 +518,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get edits for an image (alternative route pattern)
-  app.get("/api/edits/image/:imageId", isAuthenticated, async (req, res) => {
+  app.get("/api/edits/image/:imageId", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -457,9 +549,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get edits for an image (original route pattern)
-  app.get("/api/images/:id/edits", isAuthenticated, async (req, res) => {
+  app.get("/api/images/:id/edits", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -488,9 +580,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete edit
-  app.delete("/api/edits/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/edits/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -519,9 +611,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all projects for the current user
-  app.get("/api/projects", isAuthenticated, async (req, res) => {
+  app.get("/api/projects", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -535,9 +627,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a single project with its original image and edits
-  app.get("/api/projects/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/projects/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -564,9 +656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a project
-  app.delete("/api/projects/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/projects/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -594,9 +686,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TEMPORARY: Migration endpoint to create projects for existing images
-  app.post("/api/migrate-data", isAuthenticated, async (req, res) => {
+  app.post("/api/migrate-data", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.userId;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -642,6 +734,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Migration failed:", error);
       res.status(500).json({ error: "Migration failed" });
+    }
+  });
+
+  /**
+   * Admin endpoint: Generate thumbnails for images that don't have them
+   * Processes up to 10 images per request to avoid overwhelming the system
+   * Can be called multiple times to process all images
+   */
+  app.post("/api/admin/generate-thumbnails", requireAuth, async (req, res) => {
+    try {
+      console.log('[Admin] Manual thumbnail generation triggered');
+
+      // Find images without thumbnails (limit to avoid overwhelming system)
+      const imagesToProcess = await db
+        .select({
+          id: images.id,
+          originalUrl: images.originalUrl,
+        })
+        .from(images)
+        .where(isNull(images.thumbnailUrl))
+        .limit(10);
+
+      if (imagesToProcess.length === 0) {
+        console.log('[Admin] No images to process. All thumbnails up to date!');
+        return res.json({
+          success: true,
+          message: 'No images to process. All thumbnails up to date!',
+          processed: 0,
+          errors: 0,
+        });
+      }
+
+      console.log(`[Admin] Found ${imagesToProcess.length} images without thumbnails`);
+
+      // Generate thumbnails in batch
+      const stats = await generateThumbnailsBatch(imagesToProcess);
+
+      console.log(`[Admin] Complete! Processed: ${stats.processed}, Errors: ${stats.errors}`);
+
+      res.json({
+        success: true,
+        message: `Processed ${stats.processed} images, ${stats.errors} errors`,
+        processed: stats.processed,
+        errors: stats.errors,
+        remaining: imagesToProcess.length === 10 ? 'More images may need processing' : 'All done',
+      });
+
+    } catch (error) {
+      console.error('[Admin] Error generating thumbnails:', error);
+      res.status(500).json({
+        error: 'Failed to generate thumbnails',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Get current rate limit status
+  app.get("/api/rate-limit", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const rateLimit = await checkRateLimit(userId);
+      
+      return res.json({
+        remaining: rateLimit.remaining,
+        resetDate: rateLimit.resetDate,
+        isAdmin: rateLimit.remaining === 999,
+      });
+    } catch (error) {
+      console.error("Error checking rate limit:", error);
+      res.status(500).json({ error: "Failed to check rate limit" });
     }
   });
 

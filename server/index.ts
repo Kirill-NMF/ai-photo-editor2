@@ -1,5 +1,8 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
+import authRouter from "./routes/auth";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -15,6 +18,27 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+
+// Allow Telegram OAuth iframe by overriding restrictive upstream CSP
+// app.use((_, res, next) => {
+//   res.setHeader(
+//     "Content-Security-Policy",
+//     "default-src 'self'; " +
+//     "frame-src 'self' https://oauth.telegram.org; " +
+//     "frame-ancestors 'self' https://oauth.telegram.org http://77.110.104.123; " +
+//     "img-src 'self' data: https:; " +
+//     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org; " +
+//     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+//     "font-src 'self' https://fonts.gstatic.com;"
+//    );
+//   next();
+// });
+
+app.use((_, res, next) => {
+  res.removeHeader('Content-Security-Policy');
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -46,6 +70,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use("/api/auth", authRouter);
+
 (async () => {
   const server = await registerRoutes(app);
 
@@ -74,7 +100,6 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });

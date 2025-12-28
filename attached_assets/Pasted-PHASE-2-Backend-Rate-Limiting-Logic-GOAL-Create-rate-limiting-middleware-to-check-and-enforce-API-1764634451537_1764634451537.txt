@@ -1,0 +1,459 @@
+PHASE 2: Backend Rate Limiting Logic
+
+GOAL
+
+Create rate limiting middleware to check and enforce API limits.
+
+Time: 20 minutes
+Risk: Low (isolated module, not integrated yet)
+Testable: Yes (manual API calls)
+
+
+
+
+IMPLEMENTATION
+
+Create new file: server/rateLimiting.ts
+
+Full file content:
+
+TypeScript
+
+
+import { db } from "./db";
+import { users } from "../shared/schema";
+import { eq } from "drizzle-orm";
+
+export const API_LIMIT_FREE = 11;
+export const PROMO_CODE = "вот тебе пряник"; // Lowercase for case-insensitive check
+
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  isLastEdit: boolean; // True if this is the 10th edit (show warning)
+  resetDate: Date;
+}
+
+/**
+ * Check if user can make an API request
+ */
+export async function checkRateLimit(userId: string): Promise<RateLimitResult> {
+  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  
+  if (!user || user.length === 0) {
+    throw new Error("User not found");
+  }
+
+  const userData = user[0];
+
+  // Admin has unlimited access
+  if (userData.isAdmin === 1) {
+    return {
+      allowed: true,
+      remaining: 999,
+      isLastEdit: false,
+      resetDate: new Date(),
+    };
+  }
+
+  // Check if we need to reset counter (monthly reset)
+  const now = new Date();
+  let resetDate = userData.apiRequestsResetDate;
+
+  if (!resetDate) {
+    // First time - set reset date to next month same day
+    resetDate = new Date(now);
+    resetDate.setMonth(resetDate.getMonth() + 1);
+    
+    await db.update(users)
+      .set({ apiRequestsResetDate: resetDate })
+      .where(eq(users.id, userId));
+  } else if (now >= resetDate) {
+    // Reset counter and set next reset date
+    const nextResetDate = new Date(resetDate);
+    nextResetDate.setMonth(nextResetDate.getMonth() + 1);
+    
+    await db.update(users)
+      .set({
+        apiRequestsCount: 0,
+        apiRequestsResetDate: nextResetDate,
+      })
+      .where(eq(users.id, userId));
+    
+    resetDate = nextResetDate;
+    userData.apiRequestsCount = 0;
+  }
+
+  const currentCount = userData.apiRequestsCount || 0;
+  const limit = API_LIMIT_FREE;
+  const remaining = Math.max(0, limit - currentCount);
+
+  return {
+    allowed: currentCount < limit,
+    remaining,
+    isLastEdit: currentCount === limit - 1, // 10th edit (before last)
+    resetDate,
+  };
+}
+
+/**
+ * Increment user's API request counter
+ * Call this AFTER successful edit
+ */
+export async function incrementRateLimit(userId: string): Promise<void> {
+  await db.update(users)
+    .set({
+      apiRequestsCount: db.raw(`api_requests_count + 1`),
+    })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * Check if prompt contains promo code
+ */
+export function isPromoCode(prompt: string): boolean {
+  return prompt.trim().toLowerCase() === PROMO_CODE;
+}
+
+/**
+ * Apply promo code - reset counter and mark as used
+ */
+export async function applyPromoCode(userId: string): Promise<{ success: boolean; message: string }> {
+  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  
+  if (!user || user.length === 0) {
+    return { success: false, message: "User not found" };
+  }
+
+  const userData = user[0];
+
+  // Check if promo code already used
+  if (userData.promoCodeUsed === 1) {
+    return {
+      success: false,
+      message: "Промо-код уже был использован ранее",
+    };
+  }
+
+  // Reset counter and mark promo code as used
+  await db.update(users)
+    .set({
+      apiRequestsCount: 0,
+      promoCodeUsed: 1,
+    })
+    .where(eq(users.id, userId));
+
+  return {
+    success: true,
+    message: "Спасибо за пряник. Теперь я сыт и могу служить дальше",
+  };
+}
+
+
+
+
+
+TESTING
+
+Test 1: Check file compiles
+
+In Replit:
+
+1.
+Save the file
+
+2.
+Check for TypeScript errors in console
+
+3.
+Application should restart without errors
+
+Expected: No compilation errors
+
+
+
+
+Test 2: Test rate limit check (manual)
+
+Create test endpoint (temporary):
+
+File: server/routes.ts
+
+Add this endpoint:
+
+TypeScript
+
+
+import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from './rateLimiting';
+
+// TEST ENDPOINT - Remove after testing!
+app.get("/api/test/rate-limit", async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const result = await checkRateLimit(req.user.id);
+  
+  return res.json({
+    userId: req.user.id,
+    email: req.user.email,
+    allowed: result.allowed,
+    remaining: result.remaining,
+    isLastEdit: result.isLastEdit,
+    resetDate: result.resetDate,
+  });
+});
+
+
+Test:
+
+1.
+Login to your app
+
+2.
+Open browser console
+
+3.
+Run:
+
+JavaScript
+
+
+fetch('/api/test/rate-limit')
+  .then(r => r.json())
+  .then(console.log);
+
+
+Expected response:
+
+JSON
+
+
+{
+  "userId": "...",
+  "email": "your-email@example.com",
+  "allowed": true,
+  "remaining": 11,
+  "isLastEdit": false,
+  "resetDate": "2025-01-02T..."
+}
+
+
+
+
+
+Test 3: Test increment
+
+Add another test endpoint:
+
+TypeScript
+
+
+app.post("/api/test/increment", async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  await incrementRateLimit(req.user.id);
+  const result = await checkRateLimit(req.user.id);
+  
+  return res.json({
+    message: "Incremented",
+    remaining: result.remaining,
+  });
+});
+
+
+Test:
+
+JavaScript
+
+
+// Increment counter
+fetch('/api/test/increment', { method: 'POST' })
+  .then(r => r.json())
+  .then(console.log);
+
+// Check again
+fetch('/api/test/rate-limit')
+  .then(r => r.json())
+  .then(console.log);
+
+
+Expected:
+
+•
+First call: remaining: 10
+
+•
+Second call: remaining: 10 (counter incremented)
+
+Increment 10 more times and check that remaining goes to 0 and allowed becomes false.
+
+
+
+
+Test 4: Test promo code detection
+
+Add test endpoint:
+
+TypeScript
+
+
+app.post("/api/test/promo", async (req, res) => {
+  const { prompt } = req.body;
+  
+  return res.json({
+    isPromo: isPromoCode(prompt),
+  });
+});
+
+
+Test:
+
+JavaScript
+
+
+// Test promo code (lowercase)
+fetch('/api/test/promo', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt: 'вот тебе пряник' })
+}).then(r => r.json()).then(console.log);
+// Expected: { isPromo: true }
+
+// Test promo code (uppercase)
+fetch('/api/test/promo', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt: 'ВОТ ТЕБЕ ПРЯНИК' })
+}).then(r => r.json()).then(console.log);
+// Expected: { isPromo: true }
+
+// Test regular prompt
+fetch('/api/test/promo', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt: 'make it brighter' })
+}).then(r => r.json()).then(console.log);
+// Expected: { isPromo: false }
+
+
+
+
+
+Test 5: Test promo code application
+
+Add test endpoint:
+
+TypeScript
+
+
+app.post("/api/test/apply-promo", async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const result = await applyPromoCode(req.user.id);
+  const rateLimit = await checkRateLimit(req.user.id);
+  
+  return res.json({
+    ...result,
+    remaining: rateLimit.remaining,
+  });
+});
+
+
+Test:
+
+JavaScript
+
+
+// First, increment counter to 11 (use limit)
+for (let i = 0; i < 11; i++) {
+  await fetch('/api/test/increment', { method: 'POST' });
+}
+
+// Check limit reached
+fetch('/api/test/rate-limit')
+  .then(r => r.json())
+  .then(console.log);
+// Expected: { allowed: false, remaining: 0 }
+
+// Apply promo code
+fetch('/api/test/apply-promo', { method: 'POST' })
+  .then(r => r.json())
+  .then(console.log);
+// Expected: { success: true, message: "Спасибо за пряник...", remaining: 11 }
+
+// Try to apply again
+fetch('/api/test/apply-promo', { method: 'POST' })
+  .then(r => r.json())
+  .then(console.log);
+// Expected: { success: false, message: "Промо-код уже был использован..." }
+
+
+
+
+
+Test 6: Test admin unlimited
+
+Make yourself admin (if not already):
+
+SQL
+
+
+UPDATE users SET is_admin = 1 WHERE email = 'your-email@example.com';
+
+
+Test:
+
+JavaScript
+
+
+fetch('/api/test/rate-limit')
+  .then(r => r.json())
+  .then(console.log);
+
+
+Expected:
+
+JSON
+
+
+{
+  "allowed": true,
+  "remaining": 999,
+  "isLastEdit": false
+}
+
+
+
+
+
+SUCCESS CRITERIA
+
+•
+✅ File server/rateLimiting.ts created
+
+•
+✅ No TypeScript compilation errors
+
+•
+✅ checkRateLimit() returns correct values
+
+•
+✅ incrementRateLimit() increases counter
+
+•
+✅ isPromoCode() detects promo code (case-insensitive)
+
+•
+✅ applyPromoCode() resets counter and marks as used
+
+•
+✅ Promo code can only be used once
+
+•
+✅ Admin users have unlimited access (remaining: 999)
+

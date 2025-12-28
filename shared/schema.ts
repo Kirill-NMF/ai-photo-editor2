@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -32,6 +33,12 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // API rate limiting fields
+  apiRequestsCount: integer("api_requests_count").notNull().default(0),
+  apiRequestsResetDate: timestamp("api_requests_reset_date"),
+  promoCodeUsed: boolean("promo_code_used").notNull().default(false),
+  isAdmin: boolean("is_admin").notNull().default(false),
 });
 
 export const upsertUserSchema = createInsertSchema(users).omit({
@@ -50,6 +57,7 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("projects_user_id_idx").on(table.userId),
+  index("projects_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
 ]);
 
 export const insertProjectSchema = createInsertSchema(projects).omit({
@@ -69,6 +77,7 @@ export const images = pgTable("images", {
   isOriginal: integer("is_original").notNull().default(1),
   originalUrl: text("original_url").notNull(),
   currentUrl: text("current_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
   fileName: varchar("file_name").notNull(),
   fileSize: integer("file_size").notNull(),
   width: integer("width").notNull(),
@@ -79,6 +88,8 @@ export const images = pgTable("images", {
   index("images_user_id_idx").on(table.userId),
   index("images_project_id_idx").on(table.projectId),
   index("images_parent_id_idx").on(table.parentImageId),
+  index("images_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
+  index("images_project_id_created_at_idx").on(table.projectId, table.createdAt.desc()),
 ]);
 
 export const insertImageSchema = createInsertSchema(images).omit({
@@ -97,12 +108,15 @@ export const edits = pgTable("edits", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   prompt: text("prompt").notNull(),
   resultUrl: text("result_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
   savedImageId: integer("saved_image_id").references(() => images.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("edits_image_id_idx").on(table.imageId),
   index("edits_user_id_idx").on(table.userId),
   index("edits_saved_image_id_idx").on(table.savedImageId),
+  index("edits_image_id_created_at_idx").on(table.imageId, table.createdAt.desc()),
+  index("edits_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
 ]);
 
 export const insertEditSchema = createInsertSchema(edits).omit({

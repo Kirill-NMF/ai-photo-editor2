@@ -78,7 +78,10 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.location.href = "/api/logout"}
+                    onClick={() => {
+                      localStorage.removeItem("authToken");
+                      window.location.href = "/";
+                    }}
                     data-testid="button-logout"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
@@ -87,7 +90,7 @@ export default function Header() {
                 </div>
               ) : (
                 <Button
-                  onClick={() => window.location.href = "/api/login"}
+                  onClick={() => (window.location.href = "/login")}
                   data-testid="button-login"
                 >
                   <LogIn className="h-4 w-4 mr-2" />

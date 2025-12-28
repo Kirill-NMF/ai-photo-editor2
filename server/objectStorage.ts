@@ -224,6 +224,11 @@ export class ObjectStorageService {
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
   }
+
+  async getObjectAclPolicy(objectPath: string): Promise<ObjectAclPolicy | null> {
+    const objectFile = await this.getObjectEntityFile(objectPath);
+    return await getObjectAclPolicy(objectFile);
+  }
 }
 
 function parseObjectPath(path: string): {
