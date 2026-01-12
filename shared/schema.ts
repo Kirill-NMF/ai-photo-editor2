@@ -24,7 +24,7 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - Updated for Replit Auth
+// User storage table - Updated for Replit Auth + Telegram Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -33,6 +33,10 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // Telegram Auth fields
+  telegramId: varchar("telegram_id").unique(),
+  telegramUsername: varchar("telegram_username"),
   
   // API rate limiting fields
   apiRequestsCount: integer("api_requests_count").notNull().default(0),

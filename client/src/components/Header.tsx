@@ -86,13 +86,12 @@ export default function Header() {
                   </Button>
                 </div>
               ) : (
-                <Button
-                  onClick={() => window.location.href = "/api/login"}
-                  data-testid="button-login"
-                >
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Login
-                </Button>
+                <Link href="/login">
+                  <Button data-testid="button-login">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Войти
+                  </Button>
+                </Link>
               )}
             </>
           )}

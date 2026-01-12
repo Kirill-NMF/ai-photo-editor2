@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import HomePage from "@/pages/HomePage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import LoginPage from "@/pages/LoginPage";
 import EditorPage from "@/pages/EditorPage";
 import GalleryPage from "@/pages/GalleryPage";
 import AccountPage from "@/pages/AccountPage";
@@ -37,6 +38,7 @@ function RouterContent() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/login" component={LoginPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/editor/:imageId">
         <DashboardLayout><EditorPage /></DashboardLayout>

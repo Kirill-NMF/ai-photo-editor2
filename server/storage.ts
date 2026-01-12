@@ -17,9 +17,11 @@ import { db } from "./db";
 import { eq, desc, and, inArray, isNull } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations - Required for Replit Auth
+  // User operations - Required for Replit Auth + Telegram Auth
   getUser(id: string): Promise<User | undefined>;
+  getUserByTelegramId(telegramId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  upsertUserByTelegramId(telegramId: string, userData: Partial<UpsertUser>): Promise<User>;
   
   // Project operations
   createProject(project: InsertProject): Promise<Project>;
@@ -68,6 +70,33 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async getUserByTelegramId(telegramId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.telegramId, telegramId));
+    return user;
+  }
+
+  async upsertUserByTelegramId(telegramId: string, userData: Partial<UpsertUser>): Promise<User> {
+    const existingUser = await this.getUserByTelegramId(telegramId);
+    
+    if (existingUser) {
+      const [updated] = await db
+        .update(users)
+        .set({ ...userData, updatedAt: new Date() })
+        .where(eq(users.telegramId, telegramId))
+        .returning();
+      return updated;
+    }
+    
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        telegramId,
+      } as UpsertUser)
+      .returning();
+    return newUser;
   }
 
   async createProject(projectData: InsertProject): Promise<Project> {

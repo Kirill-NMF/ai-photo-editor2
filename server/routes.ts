@@ -5,6 +5,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupTelegramAuth, isTelegramAuthConfigured } from "./telegramAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { insertImageSchema, edits, images } from "@shared/schema";
@@ -18,6 +19,9 @@ import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
   await setupAuth(app);
+  
+  // Setup Telegram Auth (optional, only if configured)
+  setupTelegramAuth(app);
 
   // Auth route - Get current user
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
