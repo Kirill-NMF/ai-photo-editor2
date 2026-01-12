@@ -14,12 +14,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You need to log in to access this page. Redirecting...",
+        title: "Требуется авторизация",
+        description: "Войдите чтобы получить доступ к этой странице",
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
       }, 500);
     }
   }, [isAuthenticated, isLoading, toast]);
