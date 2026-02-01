@@ -40,6 +40,32 @@ The `/api/edits` endpoint accepts a `provider` field ("huggingface" | "gemini") 
 
 **Database Service:** Neon PostgreSQL (serverless) using `DATABASE_URL` environment variable.
 **Development Tools:** Replit-specific plugins, ESBuild, Drizzle Kit for migrations.
+
+### Database Migrations
+
+**Migration Commands (Drizzle Kit):**
+- `npx drizzle-kit generate` - Generate new migration from schema changes
+- `npx drizzle-kit migrate` - Apply pending migrations (safe for production)
+- `npx drizzle-kit push` - Direct schema sync (development only, NOT for production)
+- `npx drizzle-kit studio` - Visual database browser
+
+**Migration Files:** Located in `./migrations/` directory. Commit these to version control.
+
+**Development Workflow:**
+1. Modify schema in `shared/schema.ts`
+2. Run `npx drizzle-kit generate` to create migration file
+3. Review generated SQL in `migrations/`
+4. Apply with `npx drizzle-kit migrate`
+
+**Production Deployment:**
+```bash
+git pull
+npm install
+npx drizzle-kit migrate  # Safe - only applies pending migrations
+pm2 restart app
+```
+
+**Important:** Never use `db:push` in production - it can cause data loss. Always use `drizzle-kit migrate` for production deployments.
 **Rate Limiting & Validation:** Express-rate-limit for API throttling and Zod for request validation.
 **UI Component Libraries:** Radix UI primitives, Lucide React for iconography, react-dropzone for file uploads.
 **Utilities:** clsx + tailwind-merge for CSS, date-fns for date formatting, nanoid for ID generation.
