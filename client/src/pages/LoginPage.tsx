@@ -2,15 +2,28 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles } from "lucide-react";
+import { Sparkles, AlertCircle } from "lucide-react";
 import { SiGoogle, SiTelegram } from "react-icons/si";
 import { useAuth } from "@/hooks/useAuth";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  missing_fields: "Ошибка входа через Telegram: отсутствуют данные авторизации.",
+  invalid_signature: "Ошибка входа через Telegram: неверная подпись. Попробуйте ещё раз.",
+  expired: "Ошибка входа через Telegram: данные авторизации устарели. Попробуйте ещё раз.",
+  session_failed: "Ошибка создания сессии. Попробуйте ещё раз.",
+  server_error: "Ошибка сервера при входе через Telegram. Попробуйте позже.",
+};
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
   const [telegramConfig, setTelegramConfig] = useState<{ botUsername: string } | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(true);
+
+  const errorCode = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("error")
+    : null;
+  const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? "Ошибка входа. Попробуйте ещё раз.") : null;
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -67,6 +80,13 @@ export default function LoginPage() {
           <Sparkles className="w-8 h-8 text-primary" />
           <h1 className="text-3xl font-semibold">PhotoAI</h1>
         </div>
+
+        {errorMessage && (
+          <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive" data-testid="alert-login-error">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         <Card>
           <CardHeader className="text-center">

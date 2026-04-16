@@ -18,6 +18,7 @@ function verifyTelegramAuth(data: TelegramAuthData, botToken: string): boolean {
 
   const dataCheckString = Object.keys(dataWithoutHash)
     .sort()
+    .filter((key) => dataWithoutHash[key as keyof typeof dataWithoutHash] !== undefined)
     .map((key) => `${key}=${dataWithoutHash[key as keyof typeof dataWithoutHash]}`)
     .join("\n");
 
@@ -26,13 +27,18 @@ function verifyTelegramAuth(data: TelegramAuthData, botToken: string): boolean {
     .update(dataCheckString)
     .digest("hex");
 
+  console.log("Telegram Auth: dataCheckString keys:", Object.keys(dataWithoutHash).sort());
+  console.log("Telegram Auth: computed hmac:", hmac, "received hash:", hash, "match:", hmac === hash);
+
   return hmac === hash;
 }
 
-function isAuthRecent(authDate: string, maxAgeSeconds = 300): boolean {
+function isAuthRecent(authDate: string, maxAgeSeconds = 600): boolean {
   const now = Math.floor(Date.now() / 1000);
   const authTimestamp = parseInt(authDate, 10);
-  return now - authTimestamp < maxAgeSeconds;
+  const age = now - authTimestamp;
+  console.log(`Telegram Auth: auth_date=${authDate}, now=${now}, age=${age}s, max=${maxAgeSeconds}s`);
+  return age < maxAgeSeconds;
 }
 
 export function setupTelegramAuth(app: Express) {
@@ -55,19 +61,26 @@ export function setupTelegramAuth(app: Express) {
 
   app.get("/api/auth/telegram/callback", async (req, res) => {
     try {
+      console.log("Telegram Auth: Callback received, query params:", JSON.stringify(req.query));
+
       const data = req.query as unknown as TelegramAuthData;
 
       if (!data.id || !data.hash || !data.auth_date) {
-        return res.status(400).send("Missing required fields");
+        console.error("Telegram Auth: Missing required fields — id:", data.id, "hash:", !!data.hash, "auth_date:", data.auth_date);
+        return res.redirect("/login?error=missing_fields");
       }
 
       if (!verifyTelegramAuth(data, BOT_TOKEN!)) {
-        return res.status(403).send("Invalid authentication data");
+        console.error("Telegram Auth: HMAC verification failed for user id:", data.id);
+        return res.redirect("/login?error=invalid_signature");
       }
 
       if (!isAuthRecent(data.auth_date)) {
-        return res.status(403).send("Authentication data expired");
+        console.error("Telegram Auth: Auth data expired for user id:", data.id);
+        return res.redirect("/login?error=expired");
       }
+
+      console.log("Telegram Auth: Verification passed, upserting user id:", data.id);
 
       const user = await storage.upsertUserByTelegramId(data.id, {
         firstName: data.first_name,
@@ -75,6 +88,8 @@ export function setupTelegramAuth(app: Express) {
         telegramUsername: data.username,
         profileImageUrl: data.photo_url,
       });
+
+      console.log("Telegram Auth: User upserted, DB id:", user.id);
 
       const sessionUser = {
         claims: {
@@ -89,14 +104,15 @@ export function setupTelegramAuth(app: Express) {
 
       req.login(sessionUser, (err) => {
         if (err) {
-          console.error("Telegram Auth: Session creation failed", err);
-          return res.status(500).send("Session creation failed");
+          console.error("Telegram Auth: Session creation failed:", err);
+          return res.redirect("/login?error=session_failed");
         }
+        console.log("Telegram Auth: Login successful, redirecting to /editor");
         res.redirect("/editor");
       });
     } catch (error) {
-      console.error("Telegram Auth: Error", error);
-      res.status(500).send("Authentication failed");
+      console.error("Telegram Auth: Unexpected error:", error);
+      res.redirect("/login?error=server_error");
     }
   });
 }
