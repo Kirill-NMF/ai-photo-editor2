@@ -111,7 +111,11 @@ export function setupTelegramAuth(app: Express) {
         res.redirect("/editor");
       });
     } catch (error) {
-      console.error("Telegram Auth: Unexpected error:", error);
+      const err = error as any;
+      console.error("Telegram Auth: Unexpected error message:", err?.message ?? String(error));
+      console.error("Telegram Auth: Error code:", err?.code);
+      console.error("Telegram Auth: Error name:", err?.name);
+      if (err?.cause) console.error("Telegram Auth: Error cause:", err.cause);
       res.redirect("/login?error=server_error");
     }
   });
