@@ -8,6 +8,11 @@ This AI-powered web application transforms images using natural language prompts
 
 Preferred communication style: Simple, everyday language.
 
+## Production
+
+**Production domain:** `https://ai-photo-editor.store/`
+**Telegram bot:** `@ai_photo_editor_auth_bot` — BotFather `/setdomain` must be set to `ai-photo-editor.store`
+
 ## System Architecture
 
 ### Frontend Architecture
