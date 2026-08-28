@@ -53,26 +53,35 @@ export function LandingEditorPreview() {
               <Badge variant="outline" className="hidden sm:inline-flex">Version 03</Badge>
             </div>
 
-            <div className="relative flex-1 overflow-hidden rounded-lg border bg-background shadow-sm">
-              <div className="absolute inset-0 grid grid-cols-2">
-                <div className="relative overflow-hidden bg-[linear-gradient(165deg,#cbd5e1_0%,#94a3b8_43%,#334155_44%,#64748b_66%,#1e293b_67%)]">
-                  <div className="absolute bottom-[24%] left-[16%] h-[38%] w-[32%] rounded-[45%_45%_30%_30%] bg-slate-700/80 shadow-xl" />
-                  <div className="absolute bottom-[53%] left-[23%] h-[16%] w-[17%] rounded-full bg-slate-600" />
-                  <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-medium text-white sm:text-xs">
-                    Before
-                  </span>
-                </div>
-                <div className="relative overflow-hidden bg-[linear-gradient(165deg,#ffedd5_0%,#fb923c_42%,#9a3412_43%,#431407_68%,#1c1917_69%)]">
-                  <div className="absolute -right-[15%] top-[8%] h-[42%] w-[55%] rounded-full bg-amber-200/50 blur-2xl" />
-                  <div className="absolute bottom-[24%] left-[16%] h-[38%] w-[32%] rounded-[45%_45%_30%_30%] bg-orange-950/80 shadow-xl" />
-                  <div className="absolute bottom-[53%] left-[23%] h-[16%] w-[17%] rounded-full bg-amber-950" />
-                  <span className="absolute right-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[10px] font-medium text-primary-foreground sm:text-xs">
-                    After
-                  </span>
-                </div>
+            <div className="relative min-h-80 flex-1 overflow-hidden rounded-lg border bg-background shadow-sm sm:min-h-[32rem]">
+              <img
+                src="/landing-after.jpg"
+                alt="AI-edited portrait with a cinematic creature and fiery lighting"
+                className="absolute inset-0 h-full w-full object-cover object-[center_12%]"
+                decoding="async"
+              />
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ clipPath: "inset(0 65% 0 0)" }}
+              >
+                <img
+                  src="/landing-before.jpg"
+                  alt="Original portrait before the AI edit"
+                  className="h-full w-full object-cover object-[center_12%]"
+                  decoding="async"
+                />
               </div>
-              <div className="absolute inset-y-0 left-1/2 w-px bg-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
-              <div className="absolute left-1/2 top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-background/90 shadow-md">
+
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
+              <span className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm sm:text-xs">
+                Before
+              </span>
+              <span className="absolute right-3 top-3 rounded-full border border-white/20 bg-primary px-2.5 py-1 text-[10px] font-medium text-primary-foreground shadow-sm sm:text-xs">
+                After
+              </span>
+
+              <div className="absolute inset-y-0 left-[35%] w-px bg-white/90 shadow-[0_0_0_1px_rgba(0,0,0,0.14)]" />
+              <div className="absolute left-[35%] top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-background/95 shadow-md">
                 <span className="h-3 w-px bg-border" />
               </div>
             </div>
