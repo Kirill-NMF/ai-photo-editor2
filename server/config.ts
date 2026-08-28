@@ -1,4 +1,7 @@
 import { z } from "zod";
+import path from "node:path";
+
+const DEFAULT_LOCAL_STORAGE_LIMIT = 15 * 1024 ** 3;
 
 const optionalString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -18,6 +21,8 @@ const environmentSchema = z
     GOOGLE_REDIRECT_URI: optionalString.pipe(z.string().url().optional()),
     TELEGRAM_BOT_TOKEN: optionalString,
     TELEGRAM_BOT_USERNAME: optionalString,
+    LOCAL_STORAGE_DIR: z.string().trim().min(1).default("data/object-storage"),
+    LOCAL_STORAGE_LIMIT_BYTES: z.coerce.number().int().positive().default(DEFAULT_LOCAL_STORAGE_LIMIT),
     S3_ENDPOINT: optionalString.pipe(z.string().url().optional()),
     S3_REGION: optionalString,
     S3_BUCKET: optionalString,
@@ -44,6 +49,13 @@ const environmentSchema = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Telegram authentication configuration is incomplete",
+      });
+    }
+
+    if (env.NODE_ENV === "production" && !path.isAbsolute(env.LOCAL_STORAGE_DIR)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Local storage directory must be absolute in production",
       });
     }
 
@@ -77,6 +89,10 @@ export interface AppConfig {
   telegram?: {
     botToken: string;
     botUsername: string;
+  };
+  localStorage: {
+    directory: string;
+    maxBytes: number;
   };
   s3?: {
     endpoint: string;
@@ -123,6 +139,10 @@ export function parseConfig(
             botUsername: env.TELEGRAM_BOT_USERNAME,
           }
         : undefined,
+    localStorage: {
+      directory: path.resolve(env.LOCAL_STORAGE_DIR),
+      maxBytes: env.LOCAL_STORAGE_LIMIT_BYTES,
+    },
     s3:
       env.S3_ENDPOINT &&
       env.S3_REGION &&

@@ -13,6 +13,28 @@ test("parseConfig applies loopback production-safe network defaults", () => {
 
   assert.equal(config.host, "127.0.0.1");
   assert.equal(config.port, 5080);
+  assert.equal(config.localStorage.maxBytes, 15 * 1024 ** 3);
+  assert.ok(config.localStorage.directory.length > 0);
+});
+
+test("parseConfig requires an absolute production storage directory", () => {
+  assert.throws(
+    () => parseConfig({
+      ...baseEnv,
+      NODE_ENV: "production",
+      LOCAL_STORAGE_DIR: "relative/storage",
+    }),
+    /Local storage directory must be absolute in production/,
+  );
+});
+
+test("parseConfig accepts a custom positive local storage limit", () => {
+  const config = parseConfig({
+    ...baseEnv,
+    LOCAL_STORAGE_LIMIT_BYTES: "1048576",
+  });
+
+  assert.equal(config.localStorage.maxBytes, 1_048_576);
 });
 
 test("parseConfig rejects a partial Google OAuth configuration", () => {
