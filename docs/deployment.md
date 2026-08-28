@@ -9,7 +9,7 @@ Create `/etc/ai-photo-editor/ai-photo-editor.env` with mode `0640`, owned by `ro
 - Google OAuth client ID and secret; authorized origin `https://ai-photo-editor.store`; redirect URI `https://ai-photo-editor.store/api/auth/google/callback`
 - Telegram bot token and username; set the bot login domain to `ai-photo-editor.store` in BotFather
 - `LOCAL_STORAGE_DIR=/var/lib/ai-photo-editor/storage` and `LOCAL_STORAGE_LIMIT_BYTES=16106127360` (15 GiB)
-- Gemini API key
+- OpenRouter API key with access to `google/gemini-2.5-flash-image`
 - optional private promo code; leave `PROMO_CODE` empty to disable it
 
 Create the storage directory once with `install -d -m 0700 -o photoeditor -g photoeditor /var/lib/ai-photo-editor/storage`. It is deliberately outside release directories so releases and rollbacks cannot erase user images. When the 15 GiB application limit is reached, new uploads and generated images receive HTTP 507; existing files are retained.
@@ -24,7 +24,7 @@ The legacy database credential from the former hosted environment must be revoke
 4. Point `/opt/ai-photo-editor/current` atomically at the new release.
 5. Install `deploy/ai-photo-editor.service` as `/etc/systemd/system/ai-photo-editor.service`, reload systemd, and restart the service.
 6. Add the blocks from `deploy/Caddyfile` to the existing Caddy configuration, validate it, and reload Caddy.
-7. Verify `/healthz`, `/readyz`, Google login, Telegram login, upload, one Gemini edit, thumbnail display and logout.
+7. Verify `/healthz`, `/readyz`, Google login, Telegram login, upload, one Nano Banana edit through OpenRouter, thumbnail display and logout.
 
 Never replace the complete VPS Caddyfile or stop unrelated services during this deployment.
 

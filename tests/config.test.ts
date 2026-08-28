@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseConfig, requireGeminiApiKey } from "../server/config";
+import { parseConfig, requireOpenRouterApiKey } from "../server/config";
 
 const baseEnv = {
   DATABASE_URL: "postgresql://photoeditor:secret@127.0.0.1:5432/photoeditor",
@@ -51,11 +51,11 @@ test("parseConfig rejects a partial Telegram configuration", () => {
   );
 });
 
-test("Gemini credentials are required only when the feature is called", () => {
+test("OpenRouter credentials are required only when the feature is called", () => {
   const config = parseConfig(baseEnv);
 
-  assert.equal(config.geminiApiKey, undefined);
-  assert.throws(() => requireGeminiApiKey(config), /GEMINI_API_KEY is required/);
+  assert.equal(config.openRouterApiKey, undefined);
+  assert.throws(() => requireOpenRouterApiKey(config), /OPENROUTER_API_KEY is required/);
 });
 
 test("parseConfig does not include secret values in validation errors", () => {

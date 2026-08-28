@@ -23,7 +23,7 @@ const environmentSchema = z
     TELEGRAM_BOT_USERNAME: optionalString,
     LOCAL_STORAGE_DIR: z.string().trim().min(1).default("data/object-storage"),
     LOCAL_STORAGE_LIMIT_BYTES: z.coerce.number().int().positive().default(DEFAULT_LOCAL_STORAGE_LIMIT),
-    GEMINI_API_KEY: optionalString,
+    OPENROUTER_API_KEY: optionalString,
     PROMO_CODE: optionalString,
   })
   .superRefine((env, context) => {
@@ -75,7 +75,7 @@ export interface AppConfig {
     directory: string;
     maxBytes: number;
   };
-  geminiApiKey?: string;
+  openRouterApiKey?: string;
   promoCode?: string;
 }
 
@@ -117,7 +117,7 @@ export function parseConfig(
       directory: path.resolve(env.LOCAL_STORAGE_DIR),
       maxBytes: env.LOCAL_STORAGE_LIMIT_BYTES,
     },
-    geminiApiKey: env.GEMINI_API_KEY,
+    openRouterApiKey: env.OPENROUTER_API_KEY,
     promoCode: env.PROMO_CODE,
   };
 }
@@ -129,9 +129,9 @@ export function getConfig(): AppConfig {
   return cachedConfig;
 }
 
-export function requireGeminiApiKey(config: AppConfig = getConfig()): string {
-  if (!config.geminiApiKey) {
-    throw new Error("GEMINI_API_KEY is required for image editing");
+export function requireOpenRouterApiKey(config: AppConfig = getConfig()): string {
+  if (!config.openRouterApiKey) {
+    throw new Error("OPENROUTER_API_KEY is required for image editing");
   }
-  return config.geminiApiKey;
+  return config.openRouterApiKey;
 }

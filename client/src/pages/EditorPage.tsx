@@ -352,7 +352,7 @@ export default function EditorPage() {
       const requestBody: any = {
         imageId: uploadedImage.id,
         prompt: prompt,
-        provider: "gemini",
+        provider: "openrouter",
       };
       
       if (currentBaseEditId !== null) {

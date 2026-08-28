@@ -1,6 +1,6 @@
 # PhotoAI
 
-Web application for private photo uploads and Gemini-powered image editing. It uses React/Vite, Express, PostgreSQL, Google and Telegram login, and quota-limited local image storage.
+Web application for private photo uploads and Nano Banana image editing through OpenRouter. It uses React/Vite, Express, PostgreSQL, Google and Telegram login, and quota-limited local image storage.
 
 ## Local development
 

@@ -13,7 +13,7 @@ import { ObjectPermission } from "./objectAcl";
 import { edits } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { editImageWithGemini } from "./gemini";
+import { editImageWithOpenRouter } from "./openRouterImage";
 import { generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
 import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from './rateLimiting';
 import { consumePendingUpload, rememberPendingUpload } from "./storage/pendingUploads";
@@ -280,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create an edit (generate edited image using Gemini)
+  // Create an edit with Nano Banana through OpenRouter.
   app.post("/api/edits", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.claims?.sub;
@@ -293,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageId: z.number(),
         prompt: z.string().min(1).max(500),
         baseEditId: z.number().optional(),
-        provider: z.literal("gemini").optional(),
+        provider: z.literal("openrouter").optional(),
       });
       const { imageId, prompt, baseEditId } = editRequestSchema.parse(req.body);
 
@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contentType = (await imageFile.getMetadata())[0].contentType || "image/jpeg";
       const imageDataUrl = `data:${contentType};base64,${sourceImageBase64}`;
 
-      const editResult = await editImageWithGemini({
+      const editResult = await editImageWithOpenRouter({
         imageUrl: imageDataUrl,
         prompt,
       });
@@ -424,12 +424,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.error("Error creating edit:", error);
       
-      // Handle specific Gemini API errors
+      // Handle specific OpenRouter errors without exposing provider responses.
       if (error instanceof Error) {
         if (error.message.startsWith("QUOTA_EXCEEDED:")) {
           return res.status(429).json({ 
             error: "API quota exceeded",
-            message: "You've reached your Gemini API usage limit. Please try again later or upgrade your plan.",
+            message: "OpenRouter credits or request limit reached. Please try again later.",
             details: error.message.replace("QUOTA_EXCEEDED: ", "")
           });
         }

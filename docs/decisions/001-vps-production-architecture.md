@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-The original application depended on platform-specific OIDC, a proprietary object-storage sidecar and a vendor-specific database transport. Production must run on an existing VPS without disturbing other services, use a clean database, support Google and Telegram login, keep user images private, and use Gemini as the only image-editing provider.
+The original application depended on platform-specific OIDC, a proprietary object-storage sidecar and a vendor-specific database transport. Production must run on an existing VPS without disturbing other services, use a clean database, support Google and Telegram login, keep user images private, and use Nano Banana through OpenRouter for image editing.
 
 ## Decision
 
@@ -20,7 +20,7 @@ The original application depended on platform-specific OIDC, a proprietary objec
 - Use standards-based Google OpenID Connect and Telegram Login Widget verification with server-side PostgreSQL sessions.
 - Store images privately on the VPS under `/var/lib/ai-photo-editor/storage`, behind application owner/ACL checks. Enforce a 15 GiB application quota, reject writes at the limit, and never auto-delete user files.
 - Use committed Drizzle migrations and release directories with an atomic `current` symlink.
-- Support only Gemini for image editing.
+- Use OpenRouter's Image API with the fixed model `google/gemini-2.5-flash-image` (Nano Banana). Send private source images as base64 data URLs and validate returned raster data before storage.
 
 ## Alternatives considered
 
