@@ -19,6 +19,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Image, Edit } from "@shared/schema";
 import { EditorCache, debounce } from "@/utils/editorCache";
+import {
+  getRestoreFailureAction,
+  type EditorRestoreSource,
+} from "@/utils/editorRestore";
 import MobileBottomSheet from "@/components/MobileBottomSheet";
 import MobileSideDrawer from "@/components/MobileSideDrawer";
 import { useRateLimit } from "@/contexts/RateLimitContext";
@@ -169,10 +173,21 @@ export default function EditorPage() {
   };
 
   // Fetch image by ID from API
-  const fetchImageById = async (imageId: number): Promise<Image | null> => {
+  const fetchImageById = async (
+    imageId: number,
+    source: EditorRestoreSource,
+  ): Promise<Image | null> => {
     try {
-      const response = await apiRequest("GET", `/api/images/${imageId}`);
+      const response = await fetch(`/api/images/${imageId}`, {
+        credentials: "include",
+      });
       if (!response.ok) {
+        const failureAction = getRestoreFailureAction(source, response.status);
+        if (failureAction === "discard-stale-cache") {
+          EditorCache.clear(imageId);
+          EditorCache.clearLastActiveImageId();
+          return null;
+        }
         throw new Error('Failed to fetch image');
       }
       return await response.json();
@@ -229,13 +244,13 @@ export default function EditorPage() {
   };
 
   // Restore complete session (image + edits + cache)
-  const restoreSession = async (imageId: number) => {
+  const restoreSession = async (imageId: number, source: EditorRestoreSource) => {
     // Generate unique token for this restore operation
     const restoreToken = ++currentRestoreToken.current;
     console.log('[EditorPage] Restoring session for imageId:', imageId, 'token:', restoreToken);
     
     // Fetch image data
-    const image = await fetchImageById(imageId);
+    const image = await fetchImageById(imageId, source);
     if (!image) return;
     
     // Check if this restore was cancelled (new upload or reset happened)
@@ -278,7 +293,7 @@ export default function EditorPage() {
     // Priority 1: Image ID from URL parameter
     if (imageIdFromUrl) {
       console.log('[EditorPage] Restoring session from URL imageId:', imageIdFromUrl);
-      restoreSession(imageIdFromUrl);
+      restoreSession(imageIdFromUrl, "url");
       return;
     }
 
@@ -286,7 +301,7 @@ export default function EditorPage() {
     const lastActiveId = EditorCache.getLastActiveImageId();
     if (lastActiveId) {
       console.log('[EditorPage] Found last active session, restoring...');
-      restoreSession(lastActiveId);
+      restoreSession(lastActiveId, "cache");
     }
   }, [uploadedImage, imageIdFromUrl]);
 
