@@ -1,8 +1,10 @@
 www.ai-photo-editor.store {
+    bind 79.137.203.239
     redir https://ai-photo-editor.store{uri} permanent
 }
 
 ai-photo-editor.store {
+    bind 79.137.203.239
     encode zstd gzip
     reverse_proxy 127.0.0.1:5080
 }
