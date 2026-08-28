@@ -131,14 +131,14 @@ Adapt PhotoAI to the visual language of the MIT-licensed Shadcn Landing Page ref
 **Description:** Apply the same brand surface, spacing, typography, orange accents, and responsive framing to authentication and onboarding without changing provider scripts or redirects.
 
 **Acceptance criteria:**
-- [ ] Google and Telegram authentication behavior is untouched.
-- [ ] Error, loading, and provider-unavailable states remain visible.
-- [ ] Login and onboarding visually belong to the new system.
+- [x] Google and Telegram authentication behavior is untouched.
+- [x] Error, loading, and provider-unavailable states remain visible.
+- [x] Login and onboarding visually belong to the new system.
 
 **Verification:**
-- [ ] Anonymous browser smoke test.
-- [ ] Google redirect and Telegram widget configuration checked.
-- [ ] Mobile and desktop screenshots reviewed.
+- [x] Anonymous browser smoke test.
+- [x] Provider URLs and Telegram widget callback attributes remain unchanged in source; live provider smoke is deferred to Phase 4.
+- [x] Mobile and desktop screenshots reviewed.
 
 **Dependencies:** Task 3
 

@@ -5,7 +5,7 @@
 - [x] Install shared orange/neutral design tokens and primitive styling.
 - [ ] Rebuild public header and mobile navigation.
 - [x] Recompose the PhotoAI landing page around the reference hero and section patterns.
-- [ ] Align login and onboarding screens.
+- [x] Align login and onboarding screens.
 - [ ] Redesign the authenticated dashboard shell.
 - [ ] Redesign editor empty and active states without changing behavior.
 - [ ] Redesign gallery states and project surfaces.

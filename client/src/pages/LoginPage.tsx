@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { AlertCircle, Check, Sparkles, WandSparkles } from "lucide-react";
+import { SiGoogle, SiTelegram } from "react-icons/si";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, AlertCircle } from "lucide-react";
-import { SiGoogle, SiTelegram } from "react-icons/si";
 import { useAuth } from "@/hooks/useAuth";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -15,6 +16,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   google_not_configured: "Вход через Google пока не настроен.",
   google_failed: "Не удалось войти через Google. Попробуйте ещё раз.",
 };
+
+const benefits = [
+  "Сохраняйте историю каждой версии",
+  "Продолжайте редактирование с любого результата",
+  "Держите оригиналы в приватном хранилище",
+];
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -69,82 +76,127 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Загрузка...</div>
+      <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-background">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <Sparkles className="h-4 w-4 animate-pulse text-primary" />
+          Загрузка...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Sparkles className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-semibold">PhotoAI</h1>
-        </div>
+    <div className="relative min-h-[calc(100vh-5rem)] overflow-hidden">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_25%_25%,hsl(var(--primary)/0.12),transparent_40%)]" />
 
-        {errorMessage && (
-          <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive" data-testid="alert-login-error">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{errorMessage}</span>
+      <div className="site-container grid min-h-[calc(100vh-5rem)] items-center gap-12 py-12 lg:grid-cols-[1fr_28rem] lg:py-16">
+        <section className="hidden max-w-2xl lg:block" aria-labelledby="login-intro-title">
+          <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+            <WandSparkles className="h-6 w-6" />
+          </span>
+          <p className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-primary">Your creative workspace</p>
+          <h1 id="login-intro-title" className="mt-3 text-5xl font-bold leading-tight tracking-[-0.04em]">
+            Вернитесь к своим проектам и продолжайте с любой версии
+          </h1>
+          <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
+            Один аккаунт хранит галерею, историю редактирования и доступ к AI‑инструментам PhotoAI.
+          </p>
+          <ul className="mt-8 grid gap-3 text-sm">
+            {benefits.map((benefit) => (
+              <li key={benefit} className="flex items-center gap-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Check className="h-3.5 w-3.5" />
+                </span>
+                {benefit}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-6 flex items-center gap-2 lg:hidden">
+            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <h1 className="text-xl font-semibold tracking-tight">Вход в PhotoAI</h1>
           </div>
-        )}
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle>Добро пожаловать</CardTitle>
-            <CardDescription>
-              Выберите способ входа для продолжения
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => window.location.href = "/api/auth/google"}
-              data-testid="button-login-google"
+          {errorMessage && (
+            <div
+              className="mb-4 flex items-start gap-3 rounded-lg border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              role="alert"
+              data-testid="alert-login-error"
             >
-              <SiGoogle className="h-5 w-5 mr-3" />
-              Войти через Google
-            </Button>
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
-            {!telegramLoading && telegramConfig && (
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">или</span>
-                </div>
+          <Card className="border-border/80 bg-card/95 shadow-xl backdrop-blur">
+            <CardHeader>
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-primary/15 bg-primary/10 text-primary">
+                <Sparkles className="h-5 w-5" />
               </div>
-            )}
-
-            {!telegramLoading && telegramConfig && (
-              <div 
-                id="telegram-widget-container" 
-                className="flex justify-center"
-                data-testid="telegram-login-widget"
-              />
-            )}
-
-            {!telegramLoading && !telegramConfig && (
+              <CardTitle>Добро пожаловать</CardTitle>
+              <CardDescription className="pt-1">
+                Выберите удобный способ входа, чтобы открыть редактор и галерею.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <Button
-                variant="outline"
                 className="w-full"
                 size="lg"
-                disabled
-                data-testid="button-login-telegram-disabled"
+                onClick={() => {
+                  window.location.href = "/api/auth/google";
+                }}
+                data-testid="button-login-google"
               >
-                <SiTelegram className="h-5 w-5 mr-3" />
-                Telegram (не настроен)
+                <SiGoogle className="h-5 w-5" />
+                Войти через Google
               </Button>
-            )}
-          </CardContent>
-        </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Продолжая, вы соглашаетесь с условиями использования
-        </p>
+              {!telegramLoading && telegramConfig && (
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                    <span className="bg-card px-3 text-muted-foreground">или</span>
+                  </div>
+                </div>
+              )}
+
+              {!telegramLoading && telegramConfig && (
+                <div
+                  id="telegram-widget-container"
+                  className="flex min-h-10 items-center justify-center rounded-md border bg-background px-3 py-2"
+                  data-testid="telegram-login-widget"
+                />
+              )}
+
+              {!telegramLoading && !telegramConfig && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                  disabled
+                  data-testid="button-login-telegram-disabled"
+                >
+                  <SiTelegram className="h-5 w-5" />
+                  Telegram (не настроен)
+                </Button>
+              )}
+
+              {telegramLoading && (
+                <div className="h-11 animate-pulse rounded-md bg-muted" aria-label="Загрузка входа через Telegram" />
+              )}
+            </CardContent>
+          </Card>
+
+          <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
+            Продолжая, вы соглашаетесь с условиями использования сервиса.
+          </p>
+        </div>
       </div>
     </div>
   );
