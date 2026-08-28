@@ -12,6 +12,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   expired: "Ошибка входа через Telegram: данные авторизации устарели. Попробуйте ещё раз.",
   session_failed: "Ошибка создания сессии. Попробуйте ещё раз.",
   server_error: "Ошибка сервера при входе через Telegram. Попробуйте позже.",
+  google_not_configured: "Вход через Google пока не настроен.",
+  google_failed: "Не удалось войти через Google. Попробуйте ещё раз.",
 };
 
 export default function LoginPage() {
@@ -99,7 +101,7 @@ export default function LoginPage() {
             <Button
               className="w-full"
               size="lg"
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => window.location.href = "/api/auth/google"}
               data-testid="button-login-google"
             >
               <SiGoogle className="h-5 w-5 mr-3" />

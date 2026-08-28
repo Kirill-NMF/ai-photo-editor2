@@ -1,0 +1,157 @@
+import { z } from "zod";
+
+const optionalString = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().trim().min(1).optional(),
+);
+
+const environmentSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    HOST: z.string().trim().min(1).default("127.0.0.1"),
+    PORT: z.coerce.number().int().min(1).max(65_535).default(5080),
+    PUBLIC_BASE_URL: optionalString.pipe(z.string().url().optional()),
+    DATABASE_URL: z.string().trim().min(1),
+    SESSION_SECRET: z.string().min(32),
+    GOOGLE_CLIENT_ID: optionalString,
+    GOOGLE_CLIENT_SECRET: optionalString,
+    GOOGLE_REDIRECT_URI: optionalString.pipe(z.string().url().optional()),
+    TELEGRAM_BOT_TOKEN: optionalString,
+    TELEGRAM_BOT_USERNAME: optionalString,
+    S3_ENDPOINT: optionalString.pipe(z.string().url().optional()),
+    S3_REGION: optionalString,
+    S3_BUCKET: optionalString,
+    S3_ACCESS_KEY_ID: optionalString,
+    S3_SECRET_ACCESS_KEY: optionalString,
+    GEMINI_API_KEY: optionalString,
+    PROMO_CODE: optionalString,
+  })
+  .superRefine((env, context) => {
+    const googleValues = [
+      env.GOOGLE_CLIENT_ID,
+      env.GOOGLE_CLIENT_SECRET,
+      env.GOOGLE_REDIRECT_URI,
+    ];
+    if (googleValues.some(Boolean) && !googleValues.every(Boolean)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Google OAuth configuration is incomplete",
+      });
+    }
+
+    const telegramValues = [env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_BOT_USERNAME];
+    if (telegramValues.some(Boolean) && !telegramValues.every(Boolean)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Telegram authentication configuration is incomplete",
+      });
+    }
+
+    const s3Values = [
+      env.S3_ENDPOINT,
+      env.S3_REGION,
+      env.S3_BUCKET,
+      env.S3_ACCESS_KEY_ID,
+      env.S3_SECRET_ACCESS_KEY,
+    ];
+    if (s3Values.some(Boolean) && !s3Values.every(Boolean)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "S3 configuration is incomplete",
+      });
+    }
+  });
+
+export interface AppConfig {
+  nodeEnv: "development" | "test" | "production";
+  host: string;
+  port: number;
+  publicBaseUrl?: string;
+  databaseUrl: string;
+  sessionSecret: string;
+  google?: {
+    clientId: string;
+    clientSecret: string;
+    redirectUri: string;
+  };
+  telegram?: {
+    botToken: string;
+    botUsername: string;
+  };
+  s3?: {
+    endpoint: string;
+    region: string;
+    bucket: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+  };
+  geminiApiKey?: string;
+  promoCode?: string;
+}
+
+export function parseConfig(
+  environment: Record<string, string | undefined>,
+): AppConfig {
+  const parsed = environmentSchema.safeParse(environment);
+  if (!parsed.success) {
+    const messages = Array.from(
+      new Set(parsed.error.issues.map((issue) => issue.message)),
+    );
+    throw new Error(`Invalid environment configuration: ${messages.join("; ")}`);
+  }
+
+  const env = parsed.data;
+  return {
+    nodeEnv: env.NODE_ENV,
+    host: env.HOST,
+    port: env.PORT,
+    publicBaseUrl: env.PUBLIC_BASE_URL,
+    databaseUrl: env.DATABASE_URL,
+    sessionSecret: env.SESSION_SECRET,
+    google:
+      env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GOOGLE_REDIRECT_URI
+        ? {
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+            redirectUri: env.GOOGLE_REDIRECT_URI,
+          }
+        : undefined,
+    telegram:
+      env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_BOT_USERNAME
+        ? {
+            botToken: env.TELEGRAM_BOT_TOKEN,
+            botUsername: env.TELEGRAM_BOT_USERNAME,
+          }
+        : undefined,
+    s3:
+      env.S3_ENDPOINT &&
+      env.S3_REGION &&
+      env.S3_BUCKET &&
+      env.S3_ACCESS_KEY_ID &&
+      env.S3_SECRET_ACCESS_KEY
+        ? {
+            endpoint: env.S3_ENDPOINT,
+            region: env.S3_REGION,
+            bucket: env.S3_BUCKET,
+            accessKeyId: env.S3_ACCESS_KEY_ID,
+            secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+          }
+        : undefined,
+    geminiApiKey: env.GEMINI_API_KEY,
+    promoCode: env.PROMO_CODE,
+  };
+}
+
+let cachedConfig: AppConfig | undefined;
+
+export function getConfig(): AppConfig {
+  cachedConfig ??= parseConfig(process.env);
+  return cachedConfig;
+}
+
+export function requireGeminiApiKey(config: AppConfig = getConfig()): string {
+  if (!config.geminiApiKey) {
+    throw new Error("GEMINI_API_KEY is required for image editing");
+  }
+  return config.geminiApiKey;
+}

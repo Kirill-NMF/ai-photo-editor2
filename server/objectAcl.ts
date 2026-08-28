@@ -1,7 +1,12 @@
 // Integration: Object Storage (blueprint:javascript_object_storage)
-import { File } from "@google-cloud/storage";
+interface ObjectFile {
+  name: string;
+  exists(): Promise<[boolean]>;
+  getMetadata(): Promise<[{ metadata?: Record<string, string> }]>;
+  setMetadata(update: { metadata?: Record<string, string> }): Promise<void>;
+}
 
-const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
+const ACL_POLICY_METADATA_KEY = "acl-policy";
 
 export enum ObjectAccessGroupType {}
 
@@ -55,7 +60,7 @@ function createObjectAccessGroup(
 }
 
 export async function setObjectAclPolicy(
-  objectFile: File,
+  objectFile: ObjectFile,
   aclPolicy: ObjectAclPolicy,
 ): Promise<void> {
   const [exists] = await objectFile.exists();
@@ -71,7 +76,7 @@ export async function setObjectAclPolicy(
 }
 
 export async function getObjectAclPolicy(
-  objectFile: File,
+  objectFile: ObjectFile,
 ): Promise<ObjectAclPolicy | null> {
   const [metadata] = await objectFile.getMetadata();
   const aclPolicy = metadata?.metadata?.[ACL_POLICY_METADATA_KEY];
@@ -87,7 +92,7 @@ export async function canAccessObject({
   requestedPermission,
 }: {
   userId?: string;
-  objectFile: File;
+  objectFile: ObjectFile;
   requestedPermission: ObjectPermission;
 }): Promise<boolean> {
   const aclPolicy = await getObjectAclPolicy(objectFile);

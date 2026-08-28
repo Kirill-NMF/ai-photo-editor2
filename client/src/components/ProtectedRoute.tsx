@@ -1,4 +1,3 @@
-// Integration: Replit Auth (blueprint:javascript_log_in_with_replit)
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";

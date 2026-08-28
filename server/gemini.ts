@@ -1,15 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-
-const apiKey = process.env.GEMINI_API_KEY;
-
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY is not set in environment variables");
-}
-
-// Initialize Google AI Studio client
-const ai = new GoogleGenAI({
-  apiKey: apiKey
-});
+import { requireGeminiApiKey } from "./config";
 
 interface GeminiParams {
   imageUrl: string;
@@ -25,8 +15,6 @@ export interface ImageEditResult {
  * Convert image URL to base64
  */
 async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
-  console.log(`[Gemini] Fetching image from URL: ${url}`);
-  
   let base64Data: string;
   let mimeType: string;
 
@@ -61,10 +49,8 @@ async function urlToBase64(url: string): Promise<{ base64: string; mimeType: str
 export async function editImageWithGemini(params: GeminiParams): Promise<ImageEditResult> {
   const { imageUrl, prompt } = params;
 
-  console.log('[Gemini] Starting image edit request');
-  console.log('[Gemini] Prompt:', prompt);
-
   try {
+    const ai = new GoogleGenAI({ apiKey: requireGeminiApiKey() });
     // Convert image to base64
     const { base64, mimeType } = await urlToBase64(imageUrl);
 
@@ -98,10 +84,6 @@ export async function editImageWithGemini(params: GeminiParams): Promise<ImageEd
       if (candidate.content && candidate.content.parts) {
         for (const part of candidate.content.parts) {
           // Check for text response
-          if (part.text) {
-            console.log('[Gemini] Text response:', part.text);
-          }
-          
           // Check for image response
           if (part.inlineData && part.inlineData.data) {
             console.log('[Gemini] Image data found in response');

@@ -1,9 +1,9 @@
 import { db } from "./db";
 import { users } from "../shared/schema";
 import { eq, sql } from "drizzle-orm";
+import { getConfig } from "./config";
 
 export const API_LIMIT_FREE = 11;
-export const PROMO_CODE = "вот тебе пряник";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -76,7 +76,8 @@ export async function incrementRateLimit(userId: string): Promise<void> {
 }
 
 export function isPromoCode(prompt: string): boolean {
-  return prompt.trim().toLowerCase() === PROMO_CODE.toLowerCase();
+  const promoCode = getConfig().promoCode;
+  return Boolean(promoCode && prompt.trim().toLowerCase() === promoCode.toLowerCase());
 }
 
 export async function applyPromoCode(userId: string): Promise<{ success: boolean; message: string }> {

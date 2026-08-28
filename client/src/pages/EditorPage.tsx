@@ -10,13 +10,6 @@ import ProcessingIndicator from "@/components/ProcessingIndicator";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ArrowLeft, Upload as UploadIcon, Sparkles, Menu } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +32,6 @@ export default function EditorPage() {
   const [currentBaseEditId, setCurrentBaseEditId] = useState<number | null>(null);
   const [overwriteLastSave, setOverwriteLastSave] = useState(false);
   const [promptText, setPromptText] = useState("");
-  const [apiProvider, setApiProvider] = useState<"huggingface" | "gemini">("gemini");
   const { toast } = useToast();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
@@ -365,7 +357,7 @@ export default function EditorPage() {
       const requestBody: any = {
         imageId: uploadedImage.id,
         prompt: prompt,
-        provider: apiProvider,
+        provider: "gemini",
       };
       
       if (currentBaseEditId !== null) {
@@ -828,28 +820,6 @@ export default function EditorPage() {
           </p>
         </div>
 
-        {/* AI Provider Dropdown - BELOW Prompt */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold mb-2">AI Provider</label>
-          <Select 
-            value={apiProvider} 
-            onValueChange={(value: "huggingface" | "gemini") => setApiProvider(value)}
-            data-testid="select-provider-mobile"
-          >
-            <SelectTrigger className="w-full" data-testid="trigger-provider-mobile">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="gemini" data-testid="option-gemini-mobile">
-                Gemini 2.5 Flash Image (Recommended)
-              </SelectItem>
-              <SelectItem value="huggingface" data-testid="option-huggingface-mobile">
-                HuggingFace
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Generate Button */}
         <Button
           onClick={() => handlePromptSubmit(promptText)}
@@ -1003,30 +973,6 @@ export default function EditorPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   Be specific for best results • Press Enter to generate, Shift + Enter for new line
                 </p>
-              </div>
-
-              {/* AI Provider Dropdown - BELOW Prompt */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  AI Provider
-                </label>
-                <Select 
-                  value={apiProvider} 
-                  onValueChange={(value: "huggingface" | "gemini") => setApiProvider(value)}
-                  data-testid="select-provider"
-                >
-                  <SelectTrigger className="w-full" data-testid="trigger-provider">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gemini" data-testid="option-gemini">
-                      Gemini 2.5 Flash Image (Recommended)
-                    </SelectItem>
-                    <SelectItem value="huggingface" data-testid="option-huggingface">
-                      HuggingFace
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* Generate Button with Rate Limit Counter */}

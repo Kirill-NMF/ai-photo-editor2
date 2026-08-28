@@ -26,7 +26,7 @@ export async function generateThumbnailInBackground(
 
     console.log(`[ThumbnailBG] Using private directory: ${privateObjectDir}`);
 
-    // Get the original file from GCS
+    // Get the original file from object storage.
     const originalFile = await objectStorageService.getObjectEntityFile(originalUrl);
     
     // Extract upload ID from the path
@@ -35,18 +35,16 @@ export async function generateThumbnailInBackground(
 
     // Generate WebP thumbnail in PRIVATE directory (ACL policy makes it publicly accessible)
     const startTime = Date.now();
-    const gcsPath = await thumbnailGenerator.generateUploadThumbnail(
+    const thumbnailPath = await thumbnailGenerator.generateUploadThumbnail(
       originalFile,
       uploadId,
       privateObjectDir
     );
     const duration = Date.now() - startTime;
     
-    console.log(`[ThumbnailBG] Thumbnail generated in ${duration}ms: ${gcsPath}`);
+    console.log(`[ThumbnailBG] Thumbnail generated in ${duration}ms: ${thumbnailPath}`);
 
-    // Convert GCS path to /objects/ path for frontend
-    // GCS:     /replit-objstore-xxx/.private/uploads/abc-123/thumb.webp
-    // Objects: /objects/uploads/abc-123/thumb.webp
+    // Store the stable application path rather than a provider-specific URL.
     const thumbnailUrl = `/objects/uploads/${uploadId}/thumb.webp`;
     
     console.log(`[ThumbnailBG] Saving to DB: ${thumbnailUrl}`);
@@ -148,7 +146,7 @@ export async function generateEditThumbnailInBackground(
 
     console.log(`[EditThumb] Using private directory: ${privateObjectDir}`);
 
-    // Get the result file from GCS
+    // Get the result file from object storage.
     const resultFile = await objectStorageService.getObjectEntityFile(resultUrl);
     
     // Extract upload ID from the path
@@ -158,16 +156,16 @@ export async function generateEditThumbnailInBackground(
 
     // Generate WebP thumbnail (reuse existing logic)
     const startTime = Date.now();
-    const gcsPath = await thumbnailGenerator.generateUploadThumbnail(
+    const thumbnailPath = await thumbnailGenerator.generateUploadThumbnail(
       resultFile,
       uploadId,
       privateObjectDir
     );
     const duration = Date.now() - startTime;
     
-    console.log(`[EditThumb] Thumbnail generated in ${duration}ms: ${gcsPath}`);
+    console.log(`[EditThumb] Thumbnail generated in ${duration}ms: ${thumbnailPath}`);
 
-    // Convert GCS path to /objects/ path for frontend
+    // Store the provider-independent application path.
     const thumbnailUrl = `/objects/uploads/${uploadId}/thumb.webp`;
     
     console.log(`[EditThumb] Saving to DB: ${thumbnailUrl}`);

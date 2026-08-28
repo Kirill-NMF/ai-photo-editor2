@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 export default function PromptInputExample() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [value, setValue] = useState("");
 
   const handleSubmit = (prompt: string) => {
     console.log('Prompt:', prompt);
@@ -12,7 +13,7 @@ export default function PromptInputExample() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      <PromptInput onSubmit={handleSubmit} isProcessing={isProcessing} />
+      <PromptInput value={value} onChange={setValue} onSubmit={handleSubmit} isProcessing={isProcessing} />
     </div>
   );
 }

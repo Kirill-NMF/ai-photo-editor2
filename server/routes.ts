@@ -1,23 +1,28 @@
-// Integration: Replit Auth (blueprint:javascript_log_in_with_replit)
-// Integration: Object Storage (blueprint:javascript_object_storage)
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { setupTelegramAuth, isTelegramAuthConfigured } from "./telegramAuth";
+import { setupAuth, isAuthenticated } from "./auth";
+import { setupTelegramAuth } from "./telegramAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertImageSchema, edits, images } from "@shared/schema";
-import { eq, isNull } from "drizzle-orm";
+import { edits } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithGemini } from "./gemini";
-import { editImageWithHuggingFace } from "./huggingface";
-import { generateThumbnailsBatch, generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
+import { generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
 import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from './rateLimiting';
+import { consumePendingUpload, rememberPendingUpload } from "./storage/pendingUploads";
+import { imageUploadRequestSchema } from "./validation/imageUploadRequest";
+
+declare module "express-session" {
+  interface SessionData {
+    pendingObjectPaths?: string[];
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit Auth middleware
+  // Setup session and OAuth middleware before Telegram auth.
   await setupAuth(app);
   
   // Setup Telegram Auth (optional, only if configured)
@@ -88,6 +93,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      req.session.pendingObjectPaths = rememberPendingUpload(
+        req.session.pendingObjectPaths,
+        objectPath,
+      );
       res.json({ uploadURL });
     } catch (error) {
       console.error("Error generating upload URL:", error);
@@ -103,18 +113,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      // Validate request body - only metadata from client
-      const uploadRequestSchema = z.object({
-        uploadUrl: z.string(),
-        fileName: z.string(),
-        fileSize: z.number(),
-        width: z.number(),
-        height: z.number(),
-      });
-      const validatedData = uploadRequestSchema.parse(req.body);
+      const validatedData = imageUploadRequestSchema.parse(req.body);
 
-      // Set ACL policy and normalize path
       const objectStorageService = new ObjectStorageService();
+      const pendingObjectPath = objectStorageService.normalizeObjectEntityPath(
+        validatedData.uploadUrl,
+      );
+      const remainingPendingUploads = consumePendingUpload(
+        req.session.pendingObjectPaths,
+        pendingObjectPath,
+      );
+      if (!remainingPendingUploads) {
+        return res.status(403).json({ error: "Upload was not issued for this session" });
+      }
+
+      // Set ACL policy and normalize path.
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
         validatedData.uploadUrl,
         {
@@ -140,6 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         width: validatedData.width,
         height: validatedData.height,
       });
+      req.session.pendingObjectPaths = remainingPendingUploads;
 
       // Generate thumbnail in background (don't await - let it complete async)
       generateThumbnailInBackground(image.id, image.originalUrl).catch(err => {
@@ -255,9 +269,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageId: z.number(),
         prompt: z.string().min(1).max(500),
         baseEditId: z.number().optional(),
-        provider: z.enum(["huggingface", "gemini"]).default("huggingface"),
+        provider: z.literal("gemini").optional(),
       });
-      const { imageId, prompt, baseEditId, provider } = editRequestSchema.parse(req.body);
+      const { imageId, prompt, baseEditId } = editRequestSchema.parse(req.body);
 
       // === PROMO CODE CHECK ===
       if (isPromoCode(prompt)) {
@@ -332,41 +346,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contentType = (await imageFile.getMetadata())[0].contentType || "image/jpeg";
       const imageDataUrl = `data:${contentType};base64,${sourceImageBase64}`;
 
-      // Call the appropriate AI provider based on selection
-      console.log(`Calling ${provider} API to edit image...`, { prompt });
-      
-      let editResult;
-      
-      switch (provider) {
-        case "huggingface":
-          if (!process.env.HUGGINGFACE_API_KEY) {
-            return res.status(500).json({ 
-              error: "Hugging Face API key not configured",
-              message: "Please add HUGGINGFACE_API_KEY to your Secrets to use Hugging Face.",
-            });
-          }
-          editResult = await editImageWithHuggingFace({
-            imageUrl: imageDataUrl,
-            prompt,
-          });
-          break;
-        
-        case "gemini":
-          if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ 
-              error: "Gemini API key not configured",
-              message: "Please add GEMINI_API_KEY to your Secrets to use Gemini.",
-            });
-          }
-          editResult = await editImageWithGemini({
-            imageUrl: imageDataUrl,
-            prompt,
-          });
-          break;
-        
-        default:
-          return res.status(400).json({ error: `Invalid provider: ${provider}` });
-      }
+      const editResult = await editImageWithGemini({
+        imageUrl: imageDataUrl,
+        prompt,
+      });
 
       // Convert base64 to buffer and upload to object storage
       const editedImageBuffer = Buffer.from(editResult.imageData, "base64");
@@ -415,8 +398,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`Failed to queue thumbnail generation for edit ${edit.id}:`, err);
       });
 
-      console.log("Edit created successfully:", edit);
-      
       // === RETURN SUCCESS WITH RATE LIMIT INFO ===
       res.status(201).json({
         ...edit,
@@ -680,111 +661,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting project:", error);
       res.status(500).json({ error: "Failed to delete project" });
-    }
-  });
-
-  // TEMPORARY: Migration endpoint to create projects for existing images
-  app.post("/api/migrate-data", isAuthenticated, async (req, res) => {
-    try {
-      const userId = req.user?.claims?.sub;
-      if (!userId) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      // Get all images without a project
-      const imagesWithoutProject = await storage.getImagesWithoutProject();
-      
-      // Filter to only this user's images
-      const userImages = imagesWithoutProject.filter(img => img.userId === userId);
-      
-      // Separate original images from saved edits
-      const originalImages = userImages.filter(img => img.isOriginal === 1);
-      const savedEdits = userImages.filter(img => img.isOriginal === 0);
-
-      let projectsCreated = 0;
-      let imagesLinked = 0;
-
-      // Create a project for each original image
-      for (const originalImg of originalImages) {
-        const newProject = await storage.createProject({
-          userId: userId,
-          name: `Project: ${originalImg.fileName}`,
-        });
-        projectsCreated++;
-
-        // Link the original image to the project
-        await storage.updateImageProjectId(originalImg.id, newProject.id);
-        imagesLinked++;
-
-        // Link any saved edits that have this image as parent
-        const relatedEdits = savedEdits.filter(edit => edit.parentImageId === originalImg.id);
-        for (const edit of relatedEdits) {
-          await storage.updateImageProjectId(edit.id, newProject.id);
-          imagesLinked++;
-        }
-      }
-
-      res.json({
-        message: "Migration successful!",
-        projectsCreated,
-        imagesLinked,
-      });
-    } catch (error) {
-      console.error("Migration failed:", error);
-      res.status(500).json({ error: "Migration failed" });
-    }
-  });
-
-  /**
-   * Admin endpoint: Generate thumbnails for images that don't have them
-   * Processes up to 10 images per request to avoid overwhelming the system
-   * Can be called multiple times to process all images
-   */
-  app.post("/api/admin/generate-thumbnails", async (req, res) => {
-    try {
-      console.log('[Admin] Manual thumbnail generation triggered');
-
-      // Find images without thumbnails (limit to avoid overwhelming system)
-      const imagesToProcess = await db
-        .select({
-          id: images.id,
-          originalUrl: images.originalUrl,
-        })
-        .from(images)
-        .where(isNull(images.thumbnailUrl))
-        .limit(10);
-
-      if (imagesToProcess.length === 0) {
-        console.log('[Admin] No images to process. All thumbnails up to date!');
-        return res.json({
-          success: true,
-          message: 'No images to process. All thumbnails up to date!',
-          processed: 0,
-          errors: 0,
-        });
-      }
-
-      console.log(`[Admin] Found ${imagesToProcess.length} images without thumbnails`);
-
-      // Generate thumbnails in batch
-      const stats = await generateThumbnailsBatch(imagesToProcess);
-
-      console.log(`[Admin] Complete! Processed: ${stats.processed}, Errors: ${stats.errors}`);
-
-      res.json({
-        success: true,
-        message: `Processed ${stats.processed} images, ${stats.errors} errors`,
-        processed: stats.processed,
-        errors: stats.errors,
-        remaining: imagesToProcess.length === 10 ? 'More images may need processing' : 'All done',
-      });
-
-    } catch (error) {
-      console.error('[Admin] Error generating thumbnails:', error);
-      res.status(500).json({
-        error: 'Failed to generate thumbnails',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
     }
   });
 

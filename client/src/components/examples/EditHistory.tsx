@@ -7,22 +7,28 @@ export default function EditHistoryExample() {
       id: 1,
       thumbnailUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop",
       prompt: "Make the sky more dramatic with sunset colors",
-      timestamp: "2 mins ago",
-      isSaved: false
+      createdAt: new Date(),
+      resultUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
+      isSaved: false,
+      isOriginal: false,
     },
     {
       id: 2,
       thumbnailUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop",
       prompt: "Add warm golden hour lighting",
-      timestamp: "5 mins ago",
-      isSaved: true
+      createdAt: new Date(),
+      resultUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
+      isSaved: true,
+      isOriginal: false,
     },
     {
       id: 3,
       thumbnailUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop",
       prompt: "Increase contrast and saturation",
-      timestamp: "10 mins ago",
-      isSaved: false
+      createdAt: new Date(),
+      resultUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
+      isSaved: false,
+      isOriginal: false,
     }
   ]);
 
@@ -36,8 +42,11 @@ export default function EditHistoryExample() {
   return (
     <div className="h-screen bg-sidebar">
       <EditHistory
-        edits={edits}
-        activeEditId={1}
+        historyItems={edits}
+        activeItemId={1}
+        currentBaseId={null}
+        overwriteLastSave={false}
+        onOverwriteToggle={() => undefined}
         onSave={handleSave}
         onUseAsBase={(id) => console.log('Use as base:', id)}
       />

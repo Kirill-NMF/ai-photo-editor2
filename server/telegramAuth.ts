@@ -1,86 +1,45 @@
-import crypto from "crypto";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
-
-interface TelegramAuthData {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: string;
-  hash: string;
-}
-
-function verifyTelegramAuth(data: TelegramAuthData, botToken: string): boolean {
-  const secret = crypto.createHash("sha256").update(botToken).digest();
-  const { hash, ...dataWithoutHash } = data;
-
-  const dataCheckString = Object.keys(dataWithoutHash)
-    .sort()
-    .filter((key) => dataWithoutHash[key as keyof typeof dataWithoutHash] !== undefined)
-    .map((key) => `${key}=${dataWithoutHash[key as keyof typeof dataWithoutHash]}`)
-    .join("\n");
-
-  const hmac = crypto
-    .createHmac("sha256", secret)
-    .update(dataCheckString)
-    .digest("hex");
-
-  console.log("Telegram Auth: dataCheckString keys:", Object.keys(dataWithoutHash).sort());
-  console.log("Telegram Auth: computed hmac:", hmac, "received hash:", hash, "match:", hmac === hash);
-
-  return hmac === hash;
-}
-
-function isAuthRecent(authDate: string, maxAgeSeconds = 600): boolean {
-  const now = Math.floor(Date.now() / 1000);
-  const authTimestamp = parseInt(authDate, 10);
-  const age = now - authTimestamp;
-  console.log(`Telegram Auth: auth_date=${authDate}, now=${now}, age=${age}s, max=${maxAgeSeconds}s`);
-  return age < maxAgeSeconds;
-}
+import { getConfig } from "./config";
+import {
+  isTelegramAuthRecent,
+  verifyTelegramAuth,
+  type TelegramAuthData,
+} from "./auth/telegramVerification";
 
 export function setupTelegramAuth(app: Express) {
-  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME;
+  const telegram = getConfig().telegram;
 
-  if (!BOT_TOKEN || !BOT_USERNAME) {
-    console.log("Telegram Auth: BOT_TOKEN or BOT_USERNAME not configured, skipping setup");
-    return;
+  if (telegram) {
+    console.log(`Telegram Auth: configured with bot @${telegram.botUsername}`);
   }
 
-  console.log(`Telegram Auth: Configured with bot @${BOT_USERNAME}`);
-
   app.get("/api/auth/telegram/config", (_req, res) => {
-    if (!BOT_USERNAME) {
+    if (!telegram) {
       return res.status(503).json({ error: "Telegram auth not configured" });
     }
-    res.json({ botUsername: BOT_USERNAME });
+    res.json({ botUsername: telegram.botUsername });
   });
 
   app.get("/api/auth/telegram/callback", async (req, res) => {
     try {
-      console.log("Telegram Auth: Callback received, query params:", JSON.stringify(req.query));
+      if (!telegram) {
+        return res.redirect("/login?error=telegram_not_configured");
+      }
 
       const data = req.query as unknown as TelegramAuthData;
 
       if (!data.id || !data.hash || !data.auth_date) {
-        console.error("Telegram Auth: Missing required fields — id:", data.id, "hash:", !!data.hash, "auth_date:", data.auth_date);
         return res.redirect("/login?error=missing_fields");
       }
 
-      if (!verifyTelegramAuth(data, BOT_TOKEN!)) {
-        console.error("Telegram Auth: HMAC verification failed for user id:", data.id);
+      if (!verifyTelegramAuth(data, telegram.botToken)) {
         return res.redirect("/login?error=invalid_signature");
       }
 
-      if (!isAuthRecent(data.auth_date)) {
-        console.error("Telegram Auth: Auth data expired for user id:", data.id);
+      if (!isTelegramAuthRecent(data.auth_date)) {
         return res.redirect("/login?error=expired");
       }
-
-      console.log("Telegram Auth: Verification passed, upserting user id:", data.id);
 
       const user = await storage.upsertUserByTelegramId(data.id, {
         firstName: data.first_name,
@@ -89,15 +48,13 @@ export function setupTelegramAuth(app: Express) {
         profileImageUrl: data.photo_url,
       });
 
-      console.log("Telegram Auth: User upserted, DB id:", user.id);
-
       const sessionUser = {
         claims: {
           sub: user.id,
-          email: user.email,
-          first_name: user.firstName,
-          last_name: user.lastName,
-          profile_image_url: user.profileImageUrl,
+          email: user.email ?? undefined,
+          first_name: user.firstName ?? undefined,
+          last_name: user.lastName ?? undefined,
+          profile_image_url: user.profileImageUrl ?? undefined,
         },
         expires_at: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
       };
@@ -107,20 +64,11 @@ export function setupTelegramAuth(app: Express) {
           console.error("Telegram Auth: Session creation failed:", err);
           return res.redirect("/login?error=session_failed");
         }
-        console.log("Telegram Auth: Login successful, redirecting to /editor");
         res.redirect("/editor");
       });
     } catch (error) {
-      const err = error as any;
-      console.error("Telegram Auth: Unexpected error message:", err?.message ?? String(error));
-      console.error("Telegram Auth: Error code:", err?.code);
-      console.error("Telegram Auth: Error name:", err?.name);
-      if (err?.cause) console.error("Telegram Auth: Error cause:", err.cause);
+      console.error("Telegram Auth: callback failed", error);
       res.redirect("/login?error=server_error");
     }
   });
 }
-
-export const isTelegramAuthConfigured = (): boolean => {
-  return !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME);
-};

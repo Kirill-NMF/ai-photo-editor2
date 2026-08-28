@@ -1,0 +1,8 @@
+www.ai-photo-editor.store {
+    redir https://ai-photo-editor.store{uri} permanent
+}
+
+ai-photo-editor.store {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:5080
+}

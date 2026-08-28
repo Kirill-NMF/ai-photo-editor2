@@ -1,6 +1,5 @@
 import sharp from 'sharp';
-import { File } from "@google-cloud/storage";
-import { objectStorageClient } from "./objectStorage";
+import { S3ObjectFile } from "./objectStorage";
 import { setObjectAclPolicy, ObjectAclPolicy } from "./objectAcl";
 
 export interface ThumbnailOptions {
@@ -19,14 +18,14 @@ export class ThumbnailGenerator {
   };
 
   /**
-   * Generate WebP thumbnail from a Google Cloud Storage file
-   * @param sourceFile - Source image file from GCS
-   * @param destinationPath - Full GCS path for thumbnail (e.g., "/bucket/uploads/123/thumb.webp")
+   * Generate a thumbnail from an S3 object.
+   * @param sourceFile - Source image in object storage
+   * @param destinationPath - Bucket-qualified thumbnail path
    * @param options - Thumbnail generation options
    * @returns Public URL of the generated thumbnail
    */
   async generateThumbnail(
-    sourceFile: File,
+    sourceFile: S3ObjectFile,
     destinationPath: string,
     options?: ThumbnailOptions
   ): Promise<string> {
@@ -69,11 +68,10 @@ export class ThumbnailGenerator {
       console.log(`[ThumbnailGenerator] Compression: ${compressionRatio}%`);
 
       // Parse destination path
-      const { bucketName, objectName } = this.parseObjectPath(destinationPath);
-      const bucket = objectStorageClient.bucket(bucketName);
-      const thumbnailFile = bucket.file(objectName);
+      const { objectName } = this.parseObjectPath(destinationPath);
+      const thumbnailFile = new S3ObjectFile(objectName);
 
-      // Upload thumbnail to GCS (DO NOT use public: true - bucket has PAP policy)
+      // Upload the thumbnail to the private bucket.
       await thumbnailFile.save(thumbnailBuffer, {
         metadata: {
           contentType: `image/${opts.format}`,
@@ -88,13 +86,12 @@ export class ThumbnailGenerator {
             originalHeight: metadata.height?.toString() || 'unknown',
           },
         },
-        public: false,  // Must be false due to bucket PAP policy
       });
 
       console.log(`[ThumbnailGenerator] ✓ Uploaded thumbnail to ${destinationPath}`);
 
       // Set ACL policy to make thumbnail publicly readable
-      // This uses Replit's custom ACL system (NOT GCS public ACL which is blocked by PAP)
+      // Visibility is enforced by the application, not by a public bucket ACL.
       const aclPolicy: ObjectAclPolicy = {
         owner: 'system',  // System-generated thumbnails
         visibility: 'public',  // Publicly readable (low-res previews are safe)
@@ -119,12 +116,12 @@ export class ThumbnailGenerator {
    * @returns Thumbnail path
    */
   async generateUploadThumbnail(
-    originalFile: File,
+    originalFile: S3ObjectFile,
     uploadId: string,
     privateObjectDir: string
   ): Promise<string> {
-    // Create thumbnail path in PRIVATE directory: /bucket/.private/uploads/{uploadId}/thumb.webp
-    // ACL policy (visibility: "public") allows access via /objects/ endpoint without auth
+    // Thumbnails share the original upload namespace and are exposed only by the
+    // dedicated low-resolution application route.
     const thumbnailPath = `${privateObjectDir}/uploads/${uploadId}/thumb.webp`;
     
     return this.generateThumbnail(originalFile, thumbnailPath, {
@@ -143,7 +140,7 @@ export class ThumbnailGenerator {
    * @returns Thumbnail path
    */
   async generateEditThumbnail(
-    editResultFile: File,
+    editResultFile: S3ObjectFile,
     editId: string,
     privateObjectDir: string
   ): Promise<string> {

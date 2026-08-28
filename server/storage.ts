@@ -1,4 +1,3 @@
-// Integration: Replit Auth (blueprint:javascript_log_in_with_replit)
 import { 
   users, 
   images,
@@ -17,7 +16,7 @@ import { db } from "./db";
 import { eq, desc, and, inArray, isNull } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations - Required for Replit Auth + Telegram Auth
+  // User operations shared by Google and Telegram authentication.
   getUser(id: string): Promise<User | undefined>;
   getUserByTelegramId(telegramId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
