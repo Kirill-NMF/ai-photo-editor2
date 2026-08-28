@@ -7,26 +7,75 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { hasTelegramWidgetFrame } from "@/lib/telegramWidget";
+import { useLocale } from "@/contexts/LocaleContext";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  missing_fields: "Ошибка входа через Telegram: отсутствуют данные авторизации.",
-  invalid_signature: "Ошибка входа через Telegram: неверная подпись. Попробуйте ещё раз.",
-  expired: "Ошибка входа через Telegram: данные авторизации устарели. Попробуйте ещё раз.",
-  session_failed: "Ошибка создания сессии. Попробуйте ещё раз.",
-  server_error: "Ошибка сервера при входе через Telegram. Попробуйте позже.",
-  google_not_configured: "Вход через Google пока не настроен.",
-  google_failed: "Не удалось войти через Google. Попробуйте ещё раз.",
+const ERROR_MESSAGES: Record<"en" | "ru", Record<string, string>> = {
+  en: {
+    missing_fields: "Telegram sign-in failed: authentication data is missing.",
+    invalid_signature: "Telegram sign-in failed: invalid signature. Please try again.",
+    expired: "Telegram sign-in data has expired. Please try again.",
+    session_failed: "Could not create your session. Please try again.",
+    server_error: "Telegram sign-in is temporarily unavailable. Please try again later.",
+    google_not_configured: "Google sign-in is not configured yet.",
+    google_failed: "Could not sign in with Google. Please try again.",
+  },
+  ru: {
+    missing_fields: "Ошибка входа через Telegram: отсутствуют данные авторизации.",
+    invalid_signature: "Ошибка входа через Telegram: неверная подпись. Попробуйте ещё раз.",
+    expired: "Ошибка входа через Telegram: данные авторизации устарели. Попробуйте ещё раз.",
+    session_failed: "Ошибка создания сессии. Попробуйте ещё раз.",
+    server_error: "Ошибка сервера при входе через Telegram. Попробуйте позже.",
+    google_not_configured: "Вход через Google пока не настроен.",
+    google_failed: "Не удалось войти через Google. Попробуйте ещё раз.",
+  },
 };
 
-const benefits = [
-  "Сохраняйте историю каждой версии",
-  "Продолжайте редактирование с любого результата",
-  "Держите оригиналы в приватном хранилище",
-];
+const copy = {
+  en: {
+    fallbackError: "Sign-in failed. Please try again.",
+    loading: "Loading...",
+    eyebrow: "Your creative workspace",
+    title: "Return to your projects and continue from any version",
+    description: "One account keeps your gallery, edit history, and access to PhotoAI tools together.",
+    benefits: ["Keep the history of every version", "Continue editing from any result", "Keep originals in private storage"],
+    mobileTitle: "Log in to PhotoAI",
+    welcome: "Welcome back",
+    chooseMethod: "Choose how you want to sign in to open the editor and gallery.",
+    google: "Continue with Google",
+    or: "or",
+    telegramLoading: "Connecting Telegram…",
+    telegramError: "Telegram sign-in could not load. Try again or use Google.",
+    retry: "Try again",
+    telegramDisabled: "Telegram (not configured)",
+    telegramLoadingLabel: "Loading Telegram sign-in",
+    terms: "By continuing, you agree to the service terms of use.",
+  },
+  ru: {
+    fallbackError: "Ошибка входа. Попробуйте ещё раз.",
+    loading: "Загрузка...",
+    eyebrow: "Ваше творческое пространство",
+    title: "Вернитесь к своим проектам и продолжайте с любой версии",
+    description: "Один аккаунт хранит галерею, историю редактирования и доступ к AI‑инструментам PhotoAI.",
+    benefits: ["Сохраняйте историю каждой версии", "Продолжайте редактирование с любого результата", "Держите оригиналы в приватном хранилище"],
+    mobileTitle: "Вход в PhotoAI",
+    welcome: "Добро пожаловать",
+    chooseMethod: "Выберите удобный способ входа, чтобы открыть редактор и галерею.",
+    google: "Войти через Google",
+    or: "или",
+    telegramLoading: "Подключаем Telegram…",
+    telegramError: "Не удалось загрузить вход через Telegram. Можно повторить или войти через Google.",
+    retry: "Повторить",
+    telegramDisabled: "Telegram (не настроен)",
+    telegramLoadingLabel: "Загрузка входа через Telegram",
+    terms: "Продолжая, вы соглашаетесь с условиями использования сервиса.",
+  },
+};
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
+  const { locale } = useLocale();
+  const text = copy[locale];
   const [telegramConfig, setTelegramConfig] = useState<{ botUsername: string } | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(true);
   const [telegramWidgetStatus, setTelegramWidgetStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -35,7 +84,7 @@ export default function LoginPage() {
   const errorCode = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("error")
     : null;
-  const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? "Ошибка входа. Попробуйте ещё раз.") : null;
+  const errorMessage = errorCode ? (ERROR_MESSAGES[locale][errorCode] ?? text.fallbackError) : null;
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -107,7 +156,7 @@ export default function LoginPage() {
       <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-background">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <Sparkles className="h-4 w-4 animate-pulse text-primary" />
-          Загрузка...
+          {text.loading}
         </div>
       </div>
     );
@@ -122,15 +171,15 @@ export default function LoginPage() {
           <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
             <WandSparkles className="h-6 w-6" />
           </span>
-          <p className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-primary">Your creative workspace</p>
+          <p className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-primary">{text.eyebrow}</p>
           <h1 id="login-intro-title" className="mt-3 text-5xl font-bold leading-tight tracking-[-0.04em]">
-            Вернитесь к своим проектам и продолжайте с любой версии
+            {text.title}
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
-            Один аккаунт хранит галерею, историю редактирования и доступ к AI‑инструментам PhotoAI.
+            {text.description}
           </p>
           <ul className="mt-8 grid gap-3 text-sm">
-            {benefits.map((benefit) => (
+            {text.benefits.map((benefit) => (
               <li key={benefit} className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Check className="h-3.5 w-3.5" />
@@ -146,7 +195,7 @@ export default function LoginPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Sparkles className="h-4 w-4" />
             </span>
-            <h1 className="text-xl font-semibold tracking-tight">Вход в PhotoAI</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{text.mobileTitle}</h1>
           </div>
 
           {errorMessage && (
@@ -165,9 +214,9 @@ export default function LoginPage() {
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-primary/15 bg-primary/10 text-primary">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <CardTitle>Добро пожаловать</CardTitle>
+              <CardTitle>{text.welcome}</CardTitle>
               <CardDescription className="pt-1">
-                Выберите удобный способ входа, чтобы открыть редактор и галерею.
+                {text.chooseMethod}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -180,7 +229,7 @@ export default function LoginPage() {
                 data-testid="button-login-google"
               >
                 <SiGoogle className="h-5 w-5" />
-                Войти через Google
+                {text.google}
               </Button>
 
               {!telegramLoading && telegramConfig && (
@@ -189,7 +238,7 @@ export default function LoginPage() {
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                    <span className="bg-card px-3 text-muted-foreground">или</span>
+                    <span className="bg-card px-3 text-muted-foreground">{text.or}</span>
                   </div>
                 </div>
               )}
@@ -208,7 +257,7 @@ export default function LoginPage() {
                       aria-live="polite"
                     >
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" aria-hidden="true" />
-                      Подключаем Telegram…
+                      {text.telegramLoading}
                     </div>
                   )}
                 </div>
@@ -217,7 +266,7 @@ export default function LoginPage() {
               {!telegramLoading && telegramConfig && telegramWidgetStatus === "error" && (
                 <div className="rounded-md border border-dashed bg-muted/30 p-3 text-center" role="status">
                   <p className="text-sm text-muted-foreground">
-                    Не удалось загрузить вход через Telegram. Можно повторить или войти через Google.
+                    {text.telegramError}
                   </p>
                   <Button
                     type="button"
@@ -231,7 +280,7 @@ export default function LoginPage() {
                     data-testid="button-retry-telegram"
                   >
                     <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                    Повторить
+                    {text.retry}
                   </Button>
                 </div>
               )}
@@ -245,18 +294,18 @@ export default function LoginPage() {
                   data-testid="button-login-telegram-disabled"
                 >
                   <SiTelegram className="h-5 w-5" />
-                  Telegram (не настроен)
+                  {text.telegramDisabled}
                 </Button>
               )}
 
               {telegramLoading && (
-                <div className="h-11 animate-pulse rounded-md bg-muted" aria-label="Загрузка входа через Telegram" />
+                <div className="h-11 animate-pulse rounded-md bg-muted" aria-label={text.telegramLoadingLabel} />
               )}
             </CardContent>
           </Card>
 
           <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
-            Продолжая, вы соглашаетесь с условиями использования сервиса.
+            {text.terms}
           </p>
         </div>
       </div>
