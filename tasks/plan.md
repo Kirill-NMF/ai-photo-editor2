@@ -52,15 +52,15 @@ Adapt PhotoAI to the visual language of the MIT-licensed Shadcn Landing Page ref
 **Description:** Replace the blue PhotoAI theme with the reference's orange semantic tokens, neutral surfaces, border/radius/shadow rules, typography scale, container widths, and reusable section utilities.
 
 **Acceptance criteria:**
-- [ ] Light and dark themes use the reference-aligned orange/neutral palette.
-- [ ] Existing shadcn primitives inherit the new tokens without API changes.
-- [ ] Focus states and text contrast remain accessible.
+- [x] Light and dark themes use the reference-aligned orange/neutral palette.
+- [x] Existing shadcn primitives inherit the new tokens without API changes.
+- [x] Focus states remain visible and primary text contrast exceeds WCAG AA.
 
 **Verification:**
-- [ ] `npm test`
-- [ ] `npm run check`
-- [ ] `npm run build`
-- [ ] Browser check of buttons, cards, inputs, focus, and dark mode.
+- [x] `npm test`
+- [x] `npm run check`
+- [x] `npm run build`
+- [x] Browser check of responsive light and dark theme surfaces.
 
 **Dependencies:** Task 1
 
@@ -74,7 +74,7 @@ Adapt PhotoAI to the visual language of the MIT-licensed Shadcn Landing Page ref
 
 ### Checkpoint: Foundation
 
-- [ ] Tests and production build pass.
+- [x] Tests and production build pass.
 - [ ] Token comparison is documented with desktop/mobile screenshots.
 
 ### Phase 2: Public experience

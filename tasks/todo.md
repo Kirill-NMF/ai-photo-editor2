@@ -2,7 +2,7 @@
 
 - [x] Preserve supplied research in `docs/research/`.
 - [x] Record reference design decisions and MIT attribution.
-- [ ] Install shared orange/neutral design tokens and primitive styling.
+- [x] Install shared orange/neutral design tokens and primitive styling.
 - [ ] Rebuild public header and mobile navigation.
 - [ ] Recompose the PhotoAI landing page around the reference hero and section patterns.
 - [ ] Align login and onboarding screens.
