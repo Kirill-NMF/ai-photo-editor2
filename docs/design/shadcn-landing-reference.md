@@ -53,3 +53,34 @@ The reference uses HSL tokens. PhotoAI should map these through existing semanti
 - Public: anonymous home, navigation open/closed, login normal/error/provider-unavailable, onboarding.
 - Product: editor empty/uploading/active/processing/error, gallery loading/empty/populated, account normal/disabled/destructive.
 - Cross-cutting: keyboard focus, dark mode, reduced motion, clean console, no unexpected network failures, and no horizontal overflow.
+
+## Rollback checkpoints
+
+The redesign was deliberately split into reversible commits. The production baseline remains tagged as
+`checkpoint/pre-shadcn-redesign-20260828` (`64725f3`).
+
+| Commit | Surface |
+|---|---|
+| `29a09f1` | Orange and neutral semantic tokens |
+| `9f53fbc` | Shared UI primitives |
+| `e9351bf` | Public navigation shell |
+| `c8413e7` | Landing page composition |
+| `b792802` | Login and onboarding |
+| `ac2afd4` | Authenticated workspace shell |
+| `5405db2` | Gallery and project cards |
+| `ccc65dd` | Account settings |
+| `d075b3b` | Editor workspace |
+| `8427b09` | Project and image modals |
+| `22d09d7` | Mobile editor overlays and upload-limit alignment |
+
+Use `git revert <commit>` to remove one redesign slice while retaining later history. Use the baseline tag only
+for a complete rollback or comparison; do not reset a shared production branch destructively.
+
+## Verification record
+
+- Automated tests: 33 passing.
+- TypeScript: passing with `tsc`.
+- Frontend production build: passing with Vite.
+- Public pages were visually checked at the acceptance viewports, including dark mode and mobile navigation.
+- Authenticated product surfaces still require a final live-session smoke test before production deployment because the local frontend-only environment has no production authentication or database configuration.
+- The existing PostCSS `from` warning and bundle-size warning remain non-blocking follow-up items; neither was introduced by the redesign.
