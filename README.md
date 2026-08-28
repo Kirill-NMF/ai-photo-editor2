@@ -5,9 +5,21 @@ Web application for private photo uploads and Nano Banana image editing through 
 ## Local development
 
 1. Install Node.js 22 and run `npm ci`.
-2. Copy `.env.example` to `.env` and fill the required values.
+2. Copy `.env.example` to `.env` and fill the required values. The development command loads this file automatically.
 3. Apply the database schema with `npm run db:migrate`.
-4. Start the application with `npm run dev`.
+4. Start the full Express + Vite application with `npm run dev`.
+5. Open `http://127.0.0.1:5080`. Do not use a standalone Vite server on port `5173` when testing authentication because it does not serve the `/api` routes.
+
+### Local Google sign-in
+
+The existing Google OAuth client can be used for local development without adding an authentication bypass:
+
+1. Add `http://127.0.0.1:5080/api/auth/google/callback` to the client's **Authorized redirect URIs** in Google Cloud.
+2. Put the same `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the untracked local `.env` file.
+3. Set `GOOGLE_REDIRECT_URI=http://127.0.0.1:5080/api/auth/google/callback` in `.env`.
+4. Use a development database URL and a separate random `SESSION_SECRET` of at least 32 characters.
+
+Telegram login remains tied to the production bot domain. Use Google for routine local authentication and verify Telegram on the deployed HTTPS domain.
 
 ## Commands
 
