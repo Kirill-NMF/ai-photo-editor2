@@ -10,6 +10,7 @@ import {
 } from "../server/storage/localObjectStore";
 import {
   keyFromObjectPath,
+  keyFromUploadUrl,
   objectPathFromKey,
 } from "../server/storage/localPaths";
 
@@ -23,6 +24,16 @@ test("local object paths reject traversal and keys outside the upload namespace"
   assert.throws(() => keyFromObjectPath("/objects/uploads/../secret"));
   assert.throws(() => keyFromObjectPath("/objects/system/file"));
   assert.throws(() => keyFromObjectPath("/objects/uploads\\secret"));
+});
+
+test("same-origin upload URLs normalize to local object keys", () => {
+  const uploadUrl = "https://ai-photo-editor.store/objects/uploads/550e8400-e29b-41d4-a716-446655440000";
+  assert.equal(
+    keyFromUploadUrl(uploadUrl, "https://ai-photo-editor.store"),
+    "uploads/550e8400-e29b-41d4-a716-446655440000",
+  );
+  assert.throws(() => keyFromUploadUrl(uploadUrl, "https://evil.example"));
+  assert.throws(() => keyFromUploadUrl(`${uploadUrl}?unexpected=1`, "https://ai-photo-editor.store"));
 });
 
 test("local storage preserves existing files when a write would exceed quota", async () => {

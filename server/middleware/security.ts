@@ -6,8 +6,6 @@ import { getConfig } from "../config";
 
 export function configureSecurity(app: Express): void {
   const config = getConfig();
-  const s3Origin = config.s3 ? new URL(config.s3.endpoint).origin : undefined;
-
   app.disable("x-powered-by");
   app.use(helmet({
     contentSecurityPolicy: {
@@ -16,7 +14,7 @@ export function configureSecurity(app: Express): void {
         scriptSrc: ["'self'", "https://telegram.org"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", ...(s3Origin ? [s3Origin] : [])],
+        connectSrc: ["'self'"],
         frameSrc: ["'self'", "https://oauth.telegram.org", "https://telegram.org"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],

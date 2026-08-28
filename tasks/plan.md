@@ -24,18 +24,18 @@ Replace the external S3 adapter with persistent local VPS storage capped at 15 G
 
 ### Phase 2: Upload and processing flow
 
-- [ ] Task 3: Add authenticated HTTP upload handling and preserve owner ACL checks.
-- [ ] Task 4: Adapt generated edits and thumbnails to local files.
-- [ ] Task 5: Replace the browser S3 uploader plugin with XHRUpload.
+- [x] Task 3: Add authenticated HTTP upload handling and preserve owner ACL checks.
+- [x] Task 4: Adapt generated edits and thumbnails to local files.
+- [x] Task 5: Replace the browser S3 uploader plugin with XHRUpload.
 
 ### Checkpoint: Core flow
 
-- [ ] Full tests and type checking pass.
-- [ ] Upload, private read, thumbnail, and edit paths use application URLs only.
+- [x] Full tests and type checking pass.
+- [x] Upload, private read, thumbnail, and edit paths use application URLs only.
 
 ### Phase 3: Production delivery
 
-- [ ] Task 6: Remove S3 dependencies and update environment, deployment docs, and systemd write access.
+- [x] Task 6: Remove S3 dependencies and update environment, deployment docs, and systemd write access.
 - [ ] Task 7: Build, audit, deploy a new disabled release, and smoke-test local storage on the VPS.
 
 ### Checkpoint: Complete

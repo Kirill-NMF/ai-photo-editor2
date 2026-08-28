@@ -23,11 +23,6 @@ const environmentSchema = z
     TELEGRAM_BOT_USERNAME: optionalString,
     LOCAL_STORAGE_DIR: z.string().trim().min(1).default("data/object-storage"),
     LOCAL_STORAGE_LIMIT_BYTES: z.coerce.number().int().positive().default(DEFAULT_LOCAL_STORAGE_LIMIT),
-    S3_ENDPOINT: optionalString.pipe(z.string().url().optional()),
-    S3_REGION: optionalString,
-    S3_BUCKET: optionalString,
-    S3_ACCESS_KEY_ID: optionalString,
-    S3_SECRET_ACCESS_KEY: optionalString,
     GEMINI_API_KEY: optionalString,
     PROMO_CODE: optionalString,
   })
@@ -58,20 +53,6 @@ const environmentSchema = z
         message: "Local storage directory must be absolute in production",
       });
     }
-
-    const s3Values = [
-      env.S3_ENDPOINT,
-      env.S3_REGION,
-      env.S3_BUCKET,
-      env.S3_ACCESS_KEY_ID,
-      env.S3_SECRET_ACCESS_KEY,
-    ];
-    if (s3Values.some(Boolean) && !s3Values.every(Boolean)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "S3 configuration is incomplete",
-      });
-    }
   });
 
 export interface AppConfig {
@@ -93,13 +74,6 @@ export interface AppConfig {
   localStorage: {
     directory: string;
     maxBytes: number;
-  };
-  s3?: {
-    endpoint: string;
-    region: string;
-    bucket: string;
-    accessKeyId: string;
-    secretAccessKey: string;
   };
   geminiApiKey?: string;
   promoCode?: string;
@@ -143,20 +117,6 @@ export function parseConfig(
       directory: path.resolve(env.LOCAL_STORAGE_DIR),
       maxBytes: env.LOCAL_STORAGE_LIMIT_BYTES,
     },
-    s3:
-      env.S3_ENDPOINT &&
-      env.S3_REGION &&
-      env.S3_BUCKET &&
-      env.S3_ACCESS_KEY_ID &&
-      env.S3_SECRET_ACCESS_KEY
-        ? {
-            endpoint: env.S3_ENDPOINT,
-            region: env.S3_REGION,
-            bucket: env.S3_BUCKET,
-            accessKeyId: env.S3_ACCESS_KEY_ID,
-            secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-          }
-        : undefined,
     geminiApiKey: env.GEMINI_API_KEY,
     promoCode: env.PROMO_CODE,
   };

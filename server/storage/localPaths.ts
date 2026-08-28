@@ -33,7 +33,6 @@ export function keyFromUploadUrl(rawUrl: string, expectedOrigin: string): string
     throw new Error("Upload URL uses an unexpected origin");
   }
 
-  const match = /^\/api\/objects\/upload\/([a-f0-9-]+)$/.exec(url.pathname);
-  if (!match) throw new Error("Invalid upload URL");
-  return validateUploadKey(`uploads/${match[1]}`);
+  if (!url.pathname.startsWith("/objects/")) throw new Error("Invalid upload URL");
+  return keyFromObjectPath(url.pathname);
 }

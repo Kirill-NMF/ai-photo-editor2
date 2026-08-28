@@ -4,7 +4,7 @@ import test from "node:test";
 import { imageUploadRequestSchema } from "../server/validation/imageUploadRequest";
 
 const validRequest = {
-  uploadUrl: "https://s3.example.test/bucket/uploads/id?X-Amz-Signature=test",
+  uploadUrl: "https://ai-photo-editor.store/objects/uploads/id",
   fileName: "photo.webp",
   fileSize: 1024,
   width: 1920,

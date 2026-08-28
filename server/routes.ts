@@ -1,10 +1,14 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./auth";
 import { setupTelegramAuth } from "./telegramAuth";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+  StorageQuotaExceededError,
+} from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { edits } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -88,20 +92,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get presigned upload URL
-  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
+  // Store an authenticated image upload directly on the VPS.
+  app.post(
+    "/api/objects/upload",
+    isAuthenticated,
+    express.raw({ type: () => true, limit: 10 * 1024 * 1024 }),
+    async (req, res) => {
     try {
+      if (!Buffer.isBuffer(req.body)) {
+        return res.status(400).json({ error: "Invalid upload body" });
+      }
       const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const uploadURL = await objectStorageService.saveUploadedImage(
+        req.body,
+        req.headers["content-type"],
+      );
       const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
       req.session.pendingObjectPaths = rememberPendingUpload(
         req.session.pendingObjectPaths,
         objectPath,
       );
-      res.json({ uploadURL });
+      res.status(201).json({ url: uploadURL });
     } catch (error) {
-      console.error("Error generating upload URL:", error);
-      res.status(500).json({ error: "Failed to generate upload URL" });
+      if (error instanceof StorageQuotaExceededError) {
+        return res.status(507).json({ error: "Storage limit reached" });
+      }
+      if (error instanceof Error && [
+        "Unsupported image type",
+        "Image is too large",
+        "Invalid image contents",
+      ].includes(error.message)) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error storing upload:", error);
+      return res.status(500).json({ error: "Failed to store upload" });
     }
   });
 
@@ -351,32 +375,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prompt,
       });
 
-      // Convert base64 to buffer and upload to object storage
+      // Convert the generated image to a buffer and store it locally.
       const editedImageBuffer = Buffer.from(editResult.imageData, "base64");
-      
-      // Get presigned upload URL
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      
-      // Upload the edited image
-      const uploadResponse = await fetch(uploadURL, {
-        method: "PUT",
-        body: editedImageBuffer,
-        headers: {
-          "Content-Type": editResult.mimeType,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Failed to upload edited image: ${uploadResponse.statusText}`);
-      }
-
-      // Set ACL policy for the uploaded image
-      const resultPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        uploadURL,
+      const resultPath = await objectStorageService.saveGeneratedImage(
+        editedImageBuffer,
+        editResult.mimeType,
         {
           owner: userId,
           visibility: "private",
-        }
+        },
       );
 
       // Save edit to database
@@ -410,6 +417,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      if (error instanceof StorageQuotaExceededError) {
+        return res.status(507).json({ error: "Storage limit reached" });
       }
       
       console.error("Error creating edit:", error);

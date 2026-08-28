@@ -18,7 +18,7 @@ The original application depended on platform-specific OIDC, a proprietary objec
 - Reuse the VPS Caddy and PostgreSQL services; isolate the app with its own Unix user, database role, database and environment file.
 - Terminate HTTPS in Caddy and expose only `ai-photo-editor.store` publicly.
 - Use standards-based Google OpenID Connect and Telegram Login Widget verification with server-side PostgreSQL sessions.
-- Use the AWS SDK v3 against a private Beget S3-compatible bucket. Browser uploads use 15-minute presigned PUT URLs; reads pass through owner/ACL checks in the application.
+- Store images privately on the VPS under `/var/lib/ai-photo-editor/storage`, behind application owner/ACL checks. Enforce a 15 GiB application quota, reject writes at the limit, and never auto-delete user files.
 - Use committed Drizzle migrations and release directories with an atomic `current` symlink.
 - Support only Gemini for image editing.
 
@@ -28,9 +28,9 @@ The original application depended on platform-specific OIDC, a proprietary objec
 
 Rejected for the first release because PostgreSQL and Caddy already run on the host, and adding duplicate infrastructure would increase operational complexity without improving isolation enough for this single process.
 
-### Public bucket URLs
+### External object storage and public URLs
 
-Rejected because original user images must not be publicly enumerable or retrievable. Application-mediated reads keep authorization in one place.
+Deferred because the VPS currently has enough disk for the requested 15 GiB allocation and an extra paid service is unnecessary for the first release. Public object URLs were rejected because original user images must not be publicly enumerable or retrievable. Application-mediated reads keep authorization in one place.
 
 ### Copying legacy hosted data
 
@@ -38,7 +38,7 @@ Rejected because the requested launch is a clean start. The migration endpoint a
 
 ## Consequences
 
-- Beget bucket CORS must permit browser PUT requests from the production origin.
+- Local storage must be backed up with the database and monitored for capacity; reaching the configured limit rejects new writes without deleting existing images.
 - The environment file contains all service credentials and must be readable only by root and the application group.
 - A release is promoted only after tests, type checking, build, migration and local health checks pass.
 - Future database migrations must remain backward-compatible with the immediately previous release so the application symlink can be rolled back safely.

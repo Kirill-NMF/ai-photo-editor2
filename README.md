@@ -1,6 +1,6 @@
 # PhotoAI
 
-Web application for private photo uploads and Gemini-powered image editing. It uses React/Vite, Express, PostgreSQL, Google and Telegram login, and an S3-compatible object store.
+Web application for private photo uploads and Gemini-powered image editing. It uses React/Vite, Express, PostgreSQL, Google and Telegram login, and quota-limited local image storage.
 
 ## Local development
 
@@ -22,6 +22,6 @@ Web application for private photo uploads and Gemini-powered image editing. It u
 
 ## Production architecture
 
-The application listens only on `127.0.0.1:5080`. Caddy terminates HTTPS and proxies the public domain to it. PostgreSQL stores users, sessions, projects and edit metadata. Original images and thumbnails stay in a private S3-compatible bucket and are served through application authorization checks.
+The application listens only on `127.0.0.1:5080`. Caddy terminates HTTPS and proxies the public domain to it. PostgreSQL stores users, sessions, projects and edit metadata. Original images and thumbnails stay in private persistent VPS storage and are served through application authorization checks.
 
 See [docs/deployment.md](docs/deployment.md) for deployment, credentials and rollback procedures. The rationale for the production architecture is recorded in [ADR-001](docs/decisions/001-vps-production-architecture.md).

@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "wouter";
 import type { UploadResult } from "@uppy/core";
 import UploadZone from "@/components/UploadZone";
-import { ObjectUploader, type ObjectUploaderRef } from "@/components/ObjectUploader";
+import {
+  ObjectUploader,
+  type ObjectUploadBody,
+  type ObjectUploaderRef,
+} from "@/components/ObjectUploader";
 import ImageCanvas from "@/components/ImageCanvas";
 import EditHistory, { type HistoryItem } from "@/components/EditHistory";
 import PromptSuggestions from "@/components/PromptSuggestions";
@@ -103,15 +107,6 @@ export default function EditorPage() {
     { id: 5, prompt: "Transform the image into a cracked, 17th-century oil painting. Deep shadows (chiaroscuro), visible heavy brushstrokes, and a golden varnish finish. it's like rap album cover but without any writings", category: "Adjust style" }
   ];
 
-  const handleGetUploadParameters = async () => {
-    const response = await apiRequest("POST", "/api/objects/upload");
-    const data = await response.json();
-    return {
-      method: "PUT" as const,
-      url: data.uploadURL,
-    };
-  };
-
   const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -123,7 +118,7 @@ export default function EditorPage() {
     });
   };
 
-  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, ObjectUploadBody>) => {
     try {
       // Cancel any in-flight restore operations
       currentRestoreToken.current++;
@@ -717,8 +712,7 @@ export default function EditorPage() {
             <ObjectUploader
               ref={uploaderRef}
               maxNumberOfFiles={1}
-              maxFileSize={20 * 1024 * 1024}
-              onGetUploadParameters={handleGetUploadParameters}
+              maxFileSize={10 * 1024 * 1024}
               onComplete={handleUploadComplete}
               buttonClassName={`h-72 w-full max-w-2xl border-2 border-dashed rounded-lg hover-elevate active-elevate-2 transition-all duration-200 ${isDragging ? 'border-primary bg-primary/5' : ''}`}
             >

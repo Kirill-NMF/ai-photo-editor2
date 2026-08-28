@@ -1,5 +1,6 @@
 import sharp from 'sharp';
-import { S3ObjectFile } from "./objectStorage";
+import { LocalObjectFile } from "./objectStorage";
+import { keyFromObjectPath } from "./storage/localPaths";
 import { setObjectAclPolicy, ObjectAclPolicy } from "./objectAcl";
 
 export interface ThumbnailOptions {
@@ -18,14 +19,14 @@ export class ThumbnailGenerator {
   };
 
   /**
-   * Generate a thumbnail from an S3 object.
+   * Generate a thumbnail from a locally stored object.
    * @param sourceFile - Source image in object storage
-   * @param destinationPath - Bucket-qualified thumbnail path
+    * @param destinationPath - Application object path for the thumbnail
    * @param options - Thumbnail generation options
    * @returns Public URL of the generated thumbnail
    */
   async generateThumbnail(
-    sourceFile: S3ObjectFile,
+    sourceFile: LocalObjectFile,
     destinationPath: string,
     options?: ThumbnailOptions
   ): Promise<string> {
@@ -68,10 +69,10 @@ export class ThumbnailGenerator {
       console.log(`[ThumbnailGenerator] Compression: ${compressionRatio}%`);
 
       // Parse destination path
-      const { objectName } = this.parseObjectPath(destinationPath);
-      const thumbnailFile = new S3ObjectFile(objectName);
+      const objectName = keyFromObjectPath(destinationPath);
+      const thumbnailFile = new LocalObjectFile(objectName);
 
-      // Upload the thumbnail to the private bucket.
+      // Save the thumbnail in private local storage.
       await thumbnailFile.save(thumbnailBuffer, {
         metadata: {
           contentType: `image/${opts.format}`,
@@ -116,7 +117,7 @@ export class ThumbnailGenerator {
    * @returns Thumbnail path
    */
   async generateUploadThumbnail(
-    originalFile: S3ObjectFile,
+    originalFile: LocalObjectFile,
     uploadId: string,
     privateObjectDir: string
   ): Promise<string> {
@@ -140,7 +141,7 @@ export class ThumbnailGenerator {
    * @returns Thumbnail path
    */
   async generateEditThumbnail(
-    editResultFile: S3ObjectFile,
+    editResultFile: LocalObjectFile,
     editId: string,
     privateObjectDir: string
   ): Promise<string> {
@@ -154,20 +155,6 @@ export class ThumbnailGenerator {
     });
   }
 
-  private parseObjectPath(path: string): { bucketName: string; objectName: string } {
-    if (!path.startsWith("/")) {
-      path = `/${path}`;
-    }
-    const pathParts = path.split("/");
-    if (pathParts.length < 3) {
-      throw new Error("Invalid path: must contain at least a bucket name");
-    }
-
-    const bucketName = pathParts[1];
-    const objectName = pathParts.slice(2).join("/");
-
-    return { bucketName, objectName };
-  }
 }
 
 // Export singleton instance
