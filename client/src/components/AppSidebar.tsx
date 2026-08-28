@@ -17,20 +17,21 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocale } from "@/contexts/LocaleContext";
 
 const menuItems = [
   {
-    title: "Image Editor",
+    title: { en: "Image Editor", ru: "Редактор" },
     url: "/editor",
     icon: ImageIcon,
   },
   {
-    title: "Gallery",
+    title: { en: "Gallery", ru: "Галерея" },
     url: "/gallery",
     icon: FolderOpen,
   },
   {
-    title: "Account",
+    title: { en: "Account", ru: "Аккаунт" },
     url: "/account",
     icon: User,
   },
@@ -39,6 +40,7 @@ const menuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { locale } = useLocale();
 
   const getInitials = () => {
     if (!user) return "?";
@@ -67,14 +69,16 @@ export function AppSidebar() {
         <Link
           href="/"
           className="flex h-11 items-center gap-3 rounded-lg px-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-          aria-label="PhotoAI home"
+          aria-label={locale === "ru" ? "PhotoAI — на главную" : "PhotoAI home"}
         >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
             <Sparkles className="h-4 w-4" />
           </span>
           <span className="min-w-0 group-data-[collapsible=icon]:hidden">
             <span className="block truncate text-sm font-semibold tracking-tight">PhotoAI</span>
-            <span className="block truncate text-[11px] text-sidebar-foreground/55">Creative workspace</span>
+            <span className="block truncate text-[11px] text-sidebar-foreground/55">
+              {locale === "ru" ? "Творческое пространство" : "Creative workspace"}
+            </span>
           </span>
         </Link>
       </SidebarHeader>
@@ -82,24 +86,24 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup className="px-3">
           <SidebarGroupLabel className="px-2 text-[11px] uppercase tracking-[0.14em]">
-            Workspace
+            {locale === "ru" ? "Пространство" : "Workspace"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
               {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild
                     isActive={location === item.url || location.startsWith(item.url + "/")}
-                    tooltip={item.title}
+                    tooltip={item.title[locale]}
                     className="h-10 gap-3 px-3 data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary hover:bg-sidebar-accent"
                   >
                     <Link
                       href={item.url}
-                      data-testid={"nav-" + item.title.toLowerCase().replace(" ", "-")}
+                      data-testid={"nav-" + item.title.en.toLowerCase().replace(" ", "-")}
                     >
                       <item.icon />
-                      <span>{item.title}</span>
+                      <span>{item.title[locale]}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -136,7 +140,9 @@ export function AppSidebar() {
             data-testid="button-sidebar-logout"
           >
             <LogOut />
-            <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+            <span className="group-data-[collapsible=icon]:hidden">
+              {locale === "ru" ? "Выйти" : "Logout"}
+            </span>
           </Button>
         </div>
       </SidebarFooter>

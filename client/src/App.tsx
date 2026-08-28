@@ -15,15 +15,19 @@ import GalleryPage from "@/pages/GalleryPage";
 import AccountPage from "@/pages/AccountPage";
 import NotFound from "@/pages/not-found";
 import { RateLimitProvider } from "@/contexts/RateLimitContext";
+import { LocaleProvider } from "@/contexts/LocaleContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import { ShieldCheck } from "lucide-react";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { locale } = useLocale();
+  const isRussian = locale === "ru";
   const pageTitle = location.startsWith("/gallery")
-    ? "Галерея"
+    ? (isRussian ? "Галерея" : "Gallery")
     : location.startsWith("/account")
-      ? "Аккаунт"
-      : "Редактор";
+      ? (isRussian ? "Аккаунт" : "Account")
+      : (isRussian ? "Редактор" : "Image Editor");
 
   return (
     <ProtectedRoute>
@@ -32,7 +36,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           href="#main-content"
           className="sr-only z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:fixed focus:left-4 focus:top-4 focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Перейти к основному содержимому
+          {isRussian ? "Перейти к основному содержимому" : "Skip to main content"}
         </a>
         <AppSidebar />
         <SidebarInset className="min-w-0 overflow-hidden border-border/70 md:border">
@@ -45,12 +49,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <div className="h-5 w-px bg-border" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{pageTitle}</p>
-                <p className="hidden text-xs text-muted-foreground sm:block">Рабочее пространство PhotoAI</p>
+                <p className="hidden text-xs text-muted-foreground sm:block">
+                  {isRussian ? "Рабочее пространство PhotoAI" : "PhotoAI workspace"}
+                </p>
               </div>
             </div>
             <div className="hidden items-center gap-2 rounded-full border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground sm:flex">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-              Приватное пространство
+              {isRussian ? "Приватное пространство" : "Private workspace"}
             </div>
           </header>
           <main id="main-content" className="min-h-0 flex-1 overflow-y-auto" tabIndex={-1}>
@@ -87,6 +93,7 @@ function RouterContent() {
 
 function AppContent() {
   const [location] = useLocation();
+  const { locale } = useLocale();
   
   // Routes that should not show the header
   const noHeaderRoutes = ["/editor", "/gallery", "/account"];
@@ -116,7 +123,7 @@ function AppContent() {
         href="#main-content"
         className="sr-only z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:fixed focus:left-4 focus:top-4 focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        Перейти к основному содержимому
+        {locale === "ru" ? "Перейти к основному содержимому" : "Skip to main content"}
       </a>
       {showHeader && <Header />}
       <main id="main-content" className="flex-1" tabIndex={-1}>
@@ -129,13 +136,15 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <RateLimitProvider>
-        <TooltipProvider>
-          <AppContent />
-        </TooltipProvider>
-      </RateLimitProvider>
-    </QueryClientProvider>
+    <LocaleProvider>
+      <QueryClientProvider client={queryClient}>
+        <RateLimitProvider>
+          <TooltipProvider>
+            <AppContent />
+          </TooltipProvider>
+        </RateLimitProvider>
+      </QueryClientProvider>
+    </LocaleProvider>
   );
 }
 

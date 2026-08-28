@@ -23,10 +23,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocale } from "@/contexts/LocaleContext";
 
 export default function Header() {
   const [isDark, setIsDark] = useState(false);
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { locale, toggleLocale } = useLocale();
+  const isRussian = locale === "ru";
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
@@ -59,7 +62,7 @@ export default function Header() {
           <div className="flex min-w-0 items-center gap-5">
             <Link
               href="/"
-              aria-label="PhotoAI — на главную"
+              aria-label={isRussian ? "PhotoAI — на главную" : "PhotoAI — home"}
               className="group flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               data-testid="link-home"
             >
@@ -72,17 +75,17 @@ export default function Header() {
             </Link>
 
             {isAuthenticated && (
-              <nav aria-label="Основная навигация" className="hidden items-center gap-1 md:flex">
+              <nav aria-label={isRussian ? "Основная навигация" : "Main navigation"} className="hidden items-center gap-1 md:flex">
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/editor" data-testid="button-editor">
                     <Sparkles />
-                    Редактор
+                    {isRussian ? "Редактор" : "Editor"}
                   </Link>
                 </Button>
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/gallery" data-testid="button-gallery">
                     <ImageIcon />
-                    Галерея
+                    {isRussian ? "Галерея" : "Gallery"}
                   </Link>
                 </Button>
               </nav>
@@ -91,7 +94,20 @@ export default function Header() {
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Button
-              aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
+              aria-label={isRussian ? "Переключить на английский" : "Switch to Russian"}
+              title={isRussian ? "Переключить на английский" : "Switch to Russian"}
+              variant="ghost"
+              size="sm"
+              onClick={toggleLocale}
+              data-testid="button-language-toggle"
+              className="h-9 min-w-10 px-2 font-mono text-xs font-semibold"
+            >
+              {locale.toUpperCase()}
+            </Button>
+            <Button
+              aria-label={isDark
+                ? (isRussian ? "Включить светлую тему" : "Use light mode")
+                : (isRussian ? "Включить тёмную тему" : "Use dark mode")}
               aria-pressed={isDark}
               variant="ghost"
               size="icon"
@@ -107,7 +123,7 @@ export default function Header() {
                 <>
                   <div className="hidden items-center gap-2 md:flex">
                     <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                      <Link href="/account" aria-label="Открыть аккаунт">
+                      <Link href="/account" aria-label={isRussian ? "Открыть аккаунт" : "Open account"}>
                         <Avatar className="h-8 w-8" data-testid="avatar-user">
                           <AvatarImage src={user?.profileImageUrl || ""} />
                           <AvatarFallback>{getInitials()}</AvatarFallback>
@@ -121,14 +137,14 @@ export default function Header() {
                       data-testid="button-logout"
                     >
                       <LogOut />
-                      Выйти
+                      {isRussian ? "Выйти" : "Logout"}
                     </Button>
                   </div>
 
                   <Sheet>
                     <SheetTrigger asChild>
                       <Button
-                        aria-label="Открыть меню"
+                        aria-label={isRussian ? "Открыть меню" : "Open menu"}
                         variant="outline"
                         size="icon"
                         className="h-9 w-9 md:hidden"
@@ -145,15 +161,17 @@ export default function Header() {
                           </span>
                           PhotoAI
                         </SheetTitle>
-                        <SheetDescription>Навигация по вашему рабочему пространству</SheetDescription>
+                        <SheetDescription>
+                          {isRussian ? "Навигация по вашему рабочему пространству" : "Navigate your workspace"}
+                        </SheetDescription>
                       </SheetHeader>
 
-                      <nav aria-label="Мобильная навигация" className="mt-8 grid gap-2">
+                      <nav aria-label={isRussian ? "Мобильная навигация" : "Mobile navigation"} className="mt-8 grid gap-2">
                         <SheetClose asChild>
                           <Button asChild variant="ghost" className="justify-start">
                             <Link href="/editor" data-testid="link-mobile-editor">
                               <Sparkles />
-                              Редактор
+                              {isRussian ? "Редактор" : "Editor"}
                             </Link>
                           </Button>
                         </SheetClose>
@@ -161,7 +179,7 @@ export default function Header() {
                           <Button asChild variant="ghost" className="justify-start">
                             <Link href="/gallery" data-testid="link-mobile-gallery">
                               <ImageIcon />
-                              Галерея
+                              {isRussian ? "Галерея" : "Gallery"}
                             </Link>
                           </Button>
                         </SheetClose>
@@ -169,7 +187,7 @@ export default function Header() {
                           <Button asChild variant="ghost" className="justify-start">
                             <Link href="/account" data-testid="link-mobile-account">
                               <UserRound />
-                              Аккаунт
+                              {isRussian ? "Аккаунт" : "Account"}
                             </Link>
                           </Button>
                         </SheetClose>
@@ -180,7 +198,7 @@ export default function Header() {
                           onClick={logout}
                         >
                           <LogOut />
-                          Выйти
+                          {isRussian ? "Выйти" : "Logout"}
                         </Button>
                       </nav>
                     </SheetContent>
@@ -190,7 +208,7 @@ export default function Header() {
                 <Button asChild size="sm" className="h-9 px-3 sm:px-4">
                   <Link href="/login" data-testid="button-login">
                     <LogIn className="hidden sm:block" />
-                    Войти
+                    {isRussian ? "Войти" : "Log in"}
                   </Link>
                 </Button>
               ))}
