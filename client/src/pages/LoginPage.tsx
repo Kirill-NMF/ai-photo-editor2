@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { AlertCircle, Check, Sparkles, WandSparkles } from "lucide-react";
+import { AlertCircle, Check, RefreshCw, Sparkles, WandSparkles } from "lucide-react";
 import { SiGoogle, SiTelegram } from "react-icons/si";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { hasTelegramWidgetFrame } from "@/lib/telegramWidget";
 
 const ERROR_MESSAGES: Record<string, string> = {
   missing_fields: "Ошибка входа через Telegram: отсутствуют данные авторизации.",
@@ -28,6 +29,8 @@ export default function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [telegramConfig, setTelegramConfig] = useState<{ botUsername: string } | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(true);
+  const [telegramWidgetStatus, setTelegramWidgetStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [telegramWidgetAttempt, setTelegramWidgetAttempt] = useState(0);
 
   const errorCode = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("error")
@@ -62,6 +65,8 @@ export default function LoginPage() {
     if (!container) return;
 
     container.innerHTML = "";
+    setTelegramWidgetStatus("loading");
+    let isDisposed = false;
 
     const script = document.createElement("script");
     script.src = "https://telegram.org/js/telegram-widget.js?22";
@@ -71,8 +76,31 @@ export default function LoginPage() {
     script.setAttribute("data-auth-url", window.location.origin + "/api/auth/telegram/callback");
     script.setAttribute("data-request-access", "write");
 
+    let verificationTimer: number | undefined;
+    const verifyWidget = () => {
+      if (isDisposed) return;
+      setTelegramWidgetStatus(hasTelegramWidgetFrame(container) ? "ready" : "error");
+    };
+
+    script.addEventListener("load", () => {
+      if (verificationTimer) window.clearTimeout(verificationTimer);
+      verificationTimer = window.setTimeout(verifyWidget, 300);
+    });
+    script.addEventListener("error", () => {
+      if (verificationTimer) window.clearTimeout(verificationTimer);
+      if (isDisposed) return;
+      setTelegramWidgetStatus("error");
+    });
+
     container.appendChild(script);
-  }, [telegramConfig]);
+    verificationTimer = window.setTimeout(verifyWidget, 5000);
+
+    return () => {
+      isDisposed = true;
+      if (verificationTimer) window.clearTimeout(verificationTimer);
+      container.innerHTML = "";
+    };
+  }, [telegramConfig, telegramWidgetAttempt]);
 
   if (isLoading) {
     return (
@@ -166,12 +194,46 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {!telegramLoading && telegramConfig && (
-                <div
-                  id="telegram-widget-container"
-                  className="flex min-h-10 items-center justify-center rounded-md border bg-background px-3 py-2"
-                  data-testid="telegram-login-widget"
-                />
+              {!telegramLoading && telegramConfig && telegramWidgetStatus !== "error" && (
+                <div className="relative min-h-11">
+                  <div
+                    id="telegram-widget-container"
+                    className="flex min-h-11 items-center justify-center overflow-hidden rounded-md border bg-background px-3 py-2"
+                    data-testid="telegram-login-widget"
+                  />
+                  {telegramWidgetStatus === "loading" && (
+                    <div
+                      className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 rounded-md border bg-background text-sm text-muted-foreground"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" aria-hidden="true" />
+                      Подключаем Telegram…
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!telegramLoading && telegramConfig && telegramWidgetStatus === "error" && (
+                <div className="rounded-md border border-dashed bg-muted/30 p-3 text-center" role="status">
+                  <p className="text-sm text-muted-foreground">
+                    Не удалось загрузить вход через Telegram. Можно повторить или войти через Google.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => {
+                      setTelegramWidgetStatus("loading");
+                      setTelegramWidgetAttempt((attempt) => attempt + 1);
+                    }}
+                    data-testid="button-retry-telegram"
+                  >
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                    Повторить
+                  </Button>
+                </div>
               )}
 
               {!telegramLoading && !telegramConfig && (

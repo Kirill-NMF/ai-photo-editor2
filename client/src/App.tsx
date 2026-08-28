@@ -20,17 +20,17 @@ import { ShieldCheck } from "lucide-react";
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const pageTitle = location.startsWith("/gallery")
-    ? "Gallery"
+    ? "Галерея"
     : location.startsWith("/account")
-      ? "Account"
-      : "Image Editor";
+      ? "Аккаунт"
+      : "Редактор";
 
   return (
     <ProtectedRoute>
       <div className="flex h-svh w-full bg-sidebar">
         <a
           href="#main-content"
-          className="sr-only fixed left-4 top-4 z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="sr-only z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:fixed focus:left-4 focus:top-4 focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Перейти к основному содержимому
         </a>
@@ -45,12 +45,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <div className="h-5 w-px bg-border" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{pageTitle}</p>
-                <p className="hidden text-xs text-muted-foreground sm:block">PhotoAI workspace</p>
+                <p className="hidden text-xs text-muted-foreground sm:block">Рабочее пространство PhotoAI</p>
               </div>
             </div>
             <div className="hidden items-center gap-2 rounded-full border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground sm:flex">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-              Private workspace
+              Приватное пространство
             </div>
           </header>
           <main id="main-content" className="min-h-0 flex-1 overflow-y-auto" tabIndex={-1}>
@@ -114,7 +114,7 @@ function AppContent() {
     <div className="min-h-screen flex flex-col">
       <a
         href="#main-content"
-        className="sr-only fixed left-4 top-4 z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="sr-only z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:fixed focus:left-4 focus:top-4 focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Перейти к основному содержимому
       </a>

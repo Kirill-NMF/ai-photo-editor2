@@ -22,44 +22,44 @@ const steps = [
   {
     number: "01",
     icon: Upload,
-    title: "Upload your image",
-    description: "Choose a JPEG, PNG, or WebP file and keep the original safely available throughout the edit.",
+    title: "Загрузите изображение",
+    description: "Выберите JPEG, PNG или WebP — оригинал останется доступен на всём протяжении редактирования.",
   },
   {
     number: "02",
     icon: WandSparkles,
-    title: "Describe the change",
-    description: "Write what you want in everyday language — from a warmer sky to a completely new visual mood.",
+    title: "Опишите изменение",
+    description: "Напишите обычными словами, что нужно поменять: от более тёплого неба до совершенно нового настроения.",
   },
   {
     number: "03",
     icon: Zap,
-    title: "Review and continue",
-    description: "Compare the result, build on earlier versions, and save the edit you want to keep.",
+    title: "Сравните и продолжайте",
+    description: "Оцените результат, вернитесь к любой версии или продолжите обработку с выбранного варианта.",
   },
 ];
 
 const features = [
   {
     icon: Layers3,
-    title: "Sequential editing",
-    description: "Apply a series of transformations without losing the visual context of the previous result.",
+    title: "Последовательное редактирование",
+    description: "Применяйте несколько изменений подряд, сохраняя визуальный контекст предыдущего результата.",
     className: "md:col-span-2",
   },
   {
     icon: History,
-    title: "Complete edit history",
-    description: "Return to any earlier version and use it as the base for your next idea.",
+    title: "Полная история версий",
+    description: "Вернитесь к любому прошлому варианту и используйте его как основу для следующей идеи.",
   },
   {
     icon: ImageIcon,
-    title: "Personal gallery",
-    description: "Keep projects organized and open them again when you are ready to continue.",
+    title: "Личная галерея",
+    description: "Храните проекты в одном месте и открывайте их снова, когда захотите продолжить.",
   },
   {
     icon: Sparkles,
-    title: "Prompt suggestions",
-    description: "Start faster with practical editing ideas shaped for image-to-image workflows.",
+    title: "Готовые идеи для промптов",
+    description: "Начинайте быстрее с практичных подсказок для обработки изображений.",
     className: "md:col-span-2",
   },
 ];
@@ -67,18 +67,18 @@ const features = [
 const trustPoints = [
   {
     icon: ShieldCheck,
-    title: "Private project files",
-    description: "Originals stay behind authenticated access.",
+    title: "Приватные файлы проектов",
+    description: "Оригиналы доступны только после входа в ваш аккаунт.",
   },
   {
     icon: Clock3,
-    title: "Fast workflow",
-    description: "Move from prompt to a new version without a complex toolset.",
+    title: "Быстрый процесс",
+    description: "Переходите от идеи к новой версии без сложной панели инструментов.",
   },
   {
     icon: Sparkles,
     title: "Nano Banana",
-    description: "Image edits run through the selected OpenRouter model.",
+    description: "Обработка изображений выполняется выбранной моделью через OpenRouter.",
   },
 ];
 
@@ -93,29 +93,29 @@ export default function HomePage() {
             <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
               AI
             </span>
-            Editing without complicated tools
+            AI без сложных инструментов
           </Badge>
 
           <h1 className="mx-auto max-w-5xl text-balance text-4xl font-bold leading-[1.05] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
-            Turn a simple prompt into a
-            <span className="text-primary"> striking photo edit</span>
+            Превратите одну идею в
+            <span className="text-primary"> выразительную фотографию</span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-            Upload an image, describe your idea in plain language, and let PhotoAI create the next version while preserving your editing history.
+            Загрузите изображение, опишите идею обычными словами, а PhotoAI создаст новую версию и сохранит историю изменений.
           </p>
 
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="group min-w-48" data-testid="button-get-started">
               <Link href="/onboarding">
-                Start editing
+                Начать редактирование
                 <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="min-w-48" data-testid="button-try-editor">
               <Link href="/editor">
                 <Sparkles />
-                Open editor
+                Открыть редактор
               </Link>
             </Button>
           </div>
@@ -129,12 +129,12 @@ export default function HomePage() {
       <section id="how-it-works" className="section-spacing scroll-mt-24 border-y bg-muted/25">
         <div className="site-container grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
           <div className="lg:sticky lg:top-28 lg:self-start">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">How it works</p>
-            <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight sm:text-4xl">
-              From upload to finished edit in three clear steps
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Как это работает</p>
+            <h2 className="mt-3 max-w-xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+              От загрузки до готового результата за 3 понятных шага
             </h2>
             <p className="mt-5 max-w-lg leading-7 text-muted-foreground">
-              The workflow stays focused on the creative decision. PhotoAI takes care of the model request, versions, and project history around it.
+              Вы принимаете творческие решения, а PhotoAI берёт на себя запрос к модели, версии и историю проекта.
             </p>
           </div>
 
@@ -160,10 +160,10 @@ export default function HomePage() {
       <section id="features" className="section-spacing scroll-mt-24">
         <div className="site-container">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Built for iteration</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Everything around the edit stays organized</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Создано для экспериментов</p>
+            <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">Всё необходимое остаётся организованным</h2>
             <p className="mt-4 leading-7 text-muted-foreground">
-              A focused workspace for creating, comparing, and returning to the images that matter.
+              Единое пространство для создания, сравнения и продолжения работы с важными изображениями.
             </p>
           </div>
 
@@ -208,13 +208,13 @@ export default function HomePage() {
             <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <WandSparkles className="h-5 w-5" />
             </span>
-            <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">Ready to see what your photo can become?</h2>
+            <h2 className="mt-6 text-balance text-3xl font-bold tracking-tight sm:text-4xl">Готовы увидеть новую версию своей фотографии?</h2>
             <p className="mx-auto mt-4 max-w-xl leading-7 text-background/65">
-              Start with one image and one clear idea. You can refine the result one version at a time.
+              Начните с одного изображения и понятной идеи. Дальше можно улучшать результат версия за версией.
             </p>
             <Button asChild size="lg" className="group mt-8 min-w-52" data-testid="button-cta-bottom">
               <Link href="/onboarding">
-                Create your first edit
+                Создать первую версию
                 <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
               </Link>
             </Button>
@@ -230,7 +230,7 @@ export default function HomePage() {
             </span>
             PhotoAI
           </div>
-          <p>AI image editing with project history and private originals.</p>
+          <p>AI-редактирование с историей проектов и приватными оригиналами.</p>
         </div>
       </footer>
     </div>

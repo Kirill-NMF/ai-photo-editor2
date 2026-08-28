@@ -76,13 +76,13 @@ export default function Header() {
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/editor" data-testid="button-editor">
                     <Sparkles />
-                    Editor
+                    Редактор
                   </Link>
                 </Button>
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/gallery" data-testid="button-gallery">
                     <ImageIcon />
-                    Gallery
+                    Галерея
                   </Link>
                 </Button>
               </nav>
@@ -121,7 +121,7 @@ export default function Header() {
                       data-testid="button-logout"
                     >
                       <LogOut />
-                      Logout
+                      Выйти
                     </Button>
                   </div>
 
@@ -153,7 +153,7 @@ export default function Header() {
                           <Button asChild variant="ghost" className="justify-start">
                             <Link href="/editor" data-testid="link-mobile-editor">
                               <Sparkles />
-                              Editor
+                              Редактор
                             </Link>
                           </Button>
                         </SheetClose>
@@ -161,7 +161,7 @@ export default function Header() {
                           <Button asChild variant="ghost" className="justify-start">
                             <Link href="/gallery" data-testid="link-mobile-gallery">
                               <ImageIcon />
-                              Gallery
+                              Галерея
                             </Link>
                           </Button>
                         </SheetClose>
@@ -169,7 +169,7 @@ export default function Header() {
                           <Button asChild variant="ghost" className="justify-start">
                             <Link href="/account" data-testid="link-mobile-account">
                               <UserRound />
-                              Account
+                              Аккаунт
                             </Link>
                           </Button>
                         </SheetClose>
@@ -180,7 +180,7 @@ export default function Header() {
                           onClick={logout}
                         >
                           <LogOut />
-                          Logout
+                          Выйти
                         </Button>
                       </nav>
                     </SheetContent>
