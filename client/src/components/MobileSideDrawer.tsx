@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { X } from "lucide-react";
+import { FolderPlus, History, Upload, X } from "lucide-react";
 import type { HistoryItem } from "@/components/EditHistory";
 import EditHistoryItem from "@/components/EditHistoryItem";
+import { Button } from "@/components/ui/button";
 
 interface MobileSideDrawerProps {
   onClose: () => void;
@@ -40,59 +41,75 @@ export default function MobileSideDrawer({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200"
+        className="fixed inset-0 z-40 animate-in bg-black/60 backdrop-blur-[2px] fade-in duration-200"
         onClick={onClose}
       />
       
       {/* Side Drawer */}
-      <div className="fixed inset-y-0 right-0 w-80 max-w-[85vw] bg-background z-50 shadow-2xl animate-in slide-in-from-right duration-300">
+      <aside
+        className="fixed inset-y-0 right-0 z-50 w-80 max-w-[88vw] animate-in border-l bg-background shadow-2xl slide-in-from-right duration-300"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Editing tools and history"
+      >
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-lg font-semibold">Menu</h3>
-          <button
+        <div className="flex items-center justify-between border-b bg-muted/20 p-4">
+          <div>
+            <h3 className="text-base font-semibold">Editing tools</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">Project actions and history</p>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={onClose}
-            className="p-2 hover-elevate active-elevate-2 rounded-lg"
             aria-label="Close menu"
             data-testid="button-close-menu"
           >
-            <X className="w-6 h-6" />
-          </button>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Menu Content */}
-        <div className="overflow-y-auto h-[calc(100vh-64px)]">
+        <div className="h-[calc(100svh-73px)] overflow-y-auto">
           {/* Action Buttons */}
-          <div className="p-4 space-y-2 border-b">
-            <button
+          <div className="space-y-2 border-b p-4">
+            <Button
               onClick={() => {
                 onUploadNew();
                 onClose();
               }}
-              className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-semibold hover-elevate active-elevate-2 transition-colors"
+              className="w-full"
               data-testid="button-upload-different"
             >
+              <Upload className="h-4 w-4" />
               Upload Different Image
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => {
                 onNewProject();
                 onClose();
               }}
-              className="w-full py-3 px-4 border-2 border-primary text-primary rounded-lg font-semibold hover-elevate active-elevate-2 transition-colors"
+              className="w-full"
               data-testid="button-new-project-mobile"
             >
+              <FolderPlus className="h-4 w-4" />
               New Project
-            </button>
+            </Button>
           </div>
 
           {/* Edit History */}
           <div className="p-4">
-            <h4 className="font-semibold mb-3">Edit History</h4>
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <History className="h-4 w-4 text-primary" />
+              Edit History
+            </h4>
             <div className="space-y-3">
               {historyItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No edits yet
-                </p>
+                <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-8 text-center">
+                  <History className="mx-auto h-6 w-6 text-muted-foreground" />
+                  <p className="mt-2 text-sm font-medium">No edits yet</p>
+                </div>
               ) : (
                 historyItems.map((item) => {
                   const isBase = item.isOriginal 
@@ -114,7 +131,7 @@ export default function MobileSideDrawer({
             </div>
           </div>
         </div>
-      </div>
+      </aside>
     </>
   );
 }

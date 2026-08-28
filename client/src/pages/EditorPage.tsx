@@ -30,6 +30,7 @@ import { LimitReachedModal } from "@/components/LimitReachedModal";
 import { PromoCodeSuccessModal } from "@/components/PromoCodeSuccessModal";
 
 type EditWithUI = Edit & { isSaved: boolean };
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export default function EditorPage() {
   const params = useParams();
@@ -633,12 +634,11 @@ export default function EditorPage() {
       return;
     }
 
-    // Validate file size (20MB)
-    const maxSize = 20 * 1024 * 1024;
-    if (file.size > maxSize) {
+    // Keep drag-and-drop validation aligned with the uploader and server policy.
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
       toast({
         title: "File too large",
-        description: "Maximum file size is 20MB",
+        description: "Maximum file size is 10MB",
         variant: "destructive",
       });
       return;
@@ -732,7 +732,7 @@ export default function EditorPage() {
             <ObjectUploader
               ref={uploaderRef}
               maxNumberOfFiles={1}
-              maxFileSize={10 * 1024 * 1024}
+              maxFileSize={MAX_IMAGE_SIZE_BYTES}
               onComplete={handleUploadComplete}
               buttonClassName={`group h-72 w-full max-w-3xl rounded-xl border-2 border-dashed bg-card/80 shadow-sm transition-[border-color,background-color,box-shadow,transform] hover:border-primary/45 hover:bg-primary/[0.03] hover:shadow-md ${isDragging ? 'border-primary bg-primary/5' : 'border-border'}`}
             >
