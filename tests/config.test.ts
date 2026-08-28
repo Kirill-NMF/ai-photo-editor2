@@ -37,6 +37,41 @@ test("parseConfig accepts a custom positive local storage limit", () => {
   assert.equal(config.localStorage.maxBytes, 1_048_576);
 });
 
+test("parseConfig enables development authentication only when explicitly requested", () => {
+  const config = parseConfig({
+    ...baseEnv,
+    NODE_ENV: "development",
+    HOST: "127.0.0.1",
+    DEV_AUTH_ENABLED: "true",
+  });
+
+  assert.equal(config.devAuthEnabled, true);
+});
+
+test("parseConfig rejects development authentication in production", () => {
+  assert.throws(
+    () => parseConfig({
+      ...baseEnv,
+      NODE_ENV: "production",
+      LOCAL_STORAGE_DIR: "C:\\photoai-storage",
+      DEV_AUTH_ENABLED: "true",
+    }),
+    /Development authentication requires NODE_ENV=development/,
+  );
+});
+
+test("parseConfig rejects development authentication on a public bind address", () => {
+  assert.throws(
+    () => parseConfig({
+      ...baseEnv,
+      NODE_ENV: "development",
+      HOST: "0.0.0.0",
+      DEV_AUTH_ENABLED: "true",
+    }),
+    /Development authentication requires a loopback HOST/,
+  );
+});
+
 test("parseConfig rejects a partial Google OAuth configuration", () => {
   assert.throws(
     () => parseConfig({ ...baseEnv, GOOGLE_CLIENT_ID: "client-id" }),

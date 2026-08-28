@@ -14,6 +14,7 @@ const environmentSchema = z
     HOST: z.string().trim().min(1).default("127.0.0.1"),
     PORT: z.coerce.number().int().min(1).max(65_535).default(5080),
     PUBLIC_BASE_URL: optionalString.pipe(z.string().url().optional()),
+    DEV_AUTH_ENABLED: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
     DATABASE_URL: z.string().trim().min(1),
     SESSION_SECRET: z.string().min(32),
     GOOGLE_CLIENT_ID: optionalString,
@@ -53,6 +54,23 @@ const environmentSchema = z
         message: "Local storage directory must be absolute in production",
       });
     }
+
+    if (env.DEV_AUTH_ENABLED && env.NODE_ENV !== "development") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Development authentication requires NODE_ENV=development",
+      });
+    }
+
+    if (
+      env.DEV_AUTH_ENABLED
+      && !["127.0.0.1", "localhost", "::1"].includes(env.HOST)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Development authentication requires a loopback HOST",
+      });
+    }
   });
 
 export interface AppConfig {
@@ -60,6 +78,7 @@ export interface AppConfig {
   host: string;
   port: number;
   publicBaseUrl?: string;
+  devAuthEnabled: boolean;
   databaseUrl: string;
   sessionSecret: string;
   google?: {
@@ -96,6 +115,7 @@ export function parseConfig(
     host: env.HOST,
     port: env.PORT,
     publicBaseUrl: env.PUBLIC_BASE_URL,
+    devAuthEnabled: env.DEV_AUTH_ENABLED,
     databaseUrl: env.DATABASE_URL,
     sessionSecret: env.SESSION_SECRET,
     google:
