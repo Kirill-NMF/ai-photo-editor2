@@ -2,26 +2,34 @@ import type { Express } from "express";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 
-import { getConfig } from "../config";
+import { getConfig, type AppConfig } from "../config";
+
+export function buildContentSecurityPolicy(nodeEnv: AppConfig["nodeEnv"]) {
+  return {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        ...(nodeEnv === "development" ? ["'unsafe-inline'"] : []),
+        "https://telegram.org",
+      ],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'self'", "https://oauth.telegram.org", "https://telegram.org"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: nodeEnv === "production" ? [] : null,
+    },
+  };
+}
 
 export function configureSecurity(app: Express): void {
   const config = getConfig();
   app.disable("x-powered-by");
   app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://telegram.org"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'"],
-        frameSrc: ["'self'", "https://oauth.telegram.org", "https://telegram.org"],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
-        upgradeInsecureRequests: config.nodeEnv === "production" ? [] : null,
-      },
-    },
+    contentSecurityPolicy: buildContentSecurityPolicy(config.nodeEnv),
     crossOriginResourcePolicy: { policy: "same-origin" },
   }));
 
