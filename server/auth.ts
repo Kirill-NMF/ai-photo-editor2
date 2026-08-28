@@ -8,6 +8,7 @@ import passport from "passport";
 import { getConfig } from "./config";
 import { storage } from "./storage";
 import { mapGoogleClaims, type SessionUser } from "./auth/googleIdentity";
+import { registerDevelopmentAuth } from "./auth/devAuth";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const GOOGLE_STRATEGY = "google";
@@ -46,6 +47,11 @@ export async function setupAuth(app: Express) {
 
   passport.serializeUser((user, done) => done(null, user));
   passport.deserializeUser((user: SessionUser, done) => done(null, user));
+
+  registerDevelopmentAuth(app, {
+    config,
+    upsertUser: (user) => storage.upsertUser(user),
+  });
 
   if (config.google) {
     const oidc = await client.discovery(
