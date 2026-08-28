@@ -57,6 +57,9 @@ export function LandingEditorPreview() {
               <img
                 src="/landing-after.jpg"
                 alt="AI-edited portrait with a cinematic creature and fiery lighting"
+                width={955}
+                height={1273}
+                fetchPriority="high"
                 className="absolute inset-0 h-full w-full object-cover object-[center_12%]"
                 decoding="async"
               />
@@ -67,6 +70,9 @@ export function LandingEditorPreview() {
                 <img
                   src="/landing-before.jpg"
                   alt="Original portrait before the AI edit"
+                  width={955}
+                  height={1273}
+                  fetchPriority="high"
                   className="h-full w-full object-cover object-[center_12%]"
                   decoding="async"
                 />

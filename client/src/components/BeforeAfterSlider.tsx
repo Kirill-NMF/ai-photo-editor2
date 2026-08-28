@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type KeyboardEvent } from "react";
+
+import { getSliderPositionFromKey } from "@/lib/sliderKeyboard";
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
@@ -110,6 +112,15 @@ export default function BeforeAfterSlider({
     setIsDragging(true);
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowLeft", "ArrowDown", "ArrowRight", "ArrowUp", "Home", "End"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    setSliderPosition((current) => getSliderPositionFromKey(current, event.key));
+  };
+
   return (
     <div className="w-full space-y-3">
       <div
@@ -141,13 +152,21 @@ export default function BeforeAfterSlider({
 
           {/* Slider Line and Handle */}
           <div
-            className="absolute bottom-0 top-0 z-10 w-0.5 cursor-ew-resize bg-primary shadow-[0_0_0_1px_hsl(var(--background)/0.45)]"
+            className="group absolute bottom-0 top-0 z-10 w-0.5 touch-none cursor-ew-resize bg-primary shadow-[0_0_0_1px_hsl(var(--background)/0.45)] focus-visible:outline-none"
             style={{ left: `${sliderPosition}%`, transform: 'translateX(-50%)' }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleMouseDown}
+            onKeyDown={handleKeyDown}
+            role="slider"
+            tabIndex={0}
+            aria-label={`Сравнение изображений: ${beforeLabel} и ${afterLabel}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(sliderPosition)}
+            aria-valuetext={`${Math.round(sliderPosition)}% изображения «${beforeLabel}»`}
           >
             {/* Slider Handle */}
-            <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-background bg-primary shadow-lg">
+            <div className="absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-background bg-primary shadow-lg ring-offset-background transition-shadow group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2">
               <div className="flex gap-1">
                 <div className="h-3.5 w-0.5 bg-primary-foreground" />
                 <div className="h-3.5 w-0.5 bg-primary-foreground" />

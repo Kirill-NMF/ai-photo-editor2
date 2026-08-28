@@ -59,13 +59,14 @@ export default function Header() {
           <div className="flex min-w-0 items-center gap-5">
             <Link
               href="/"
-              className="group flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label="PhotoAI — на главную"
+              className="group flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               data-testid="link-home"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs transition-transform group-hover:-rotate-3">
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
               </span>
-              <span className="truncate text-base font-semibold tracking-tight sm:text-lg">
+              <span className="hidden text-base font-semibold tracking-tight min-[360px]:inline sm:text-lg">
                 PhotoAI
               </span>
             </Link>

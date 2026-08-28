@@ -28,6 +28,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute>
       <div className="flex h-svh w-full bg-sidebar">
+        <a
+          href="#main-content"
+          className="sr-only fixed left-4 top-4 z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Перейти к основному содержимому
+        </a>
         <AppSidebar />
         <SidebarInset className="min-w-0 overflow-hidden border-border/70 md:border">
           <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-background/85 px-3 backdrop-blur-xl sm:px-4">
@@ -47,9 +53,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               Private workspace
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <main id="main-content" className="min-h-0 flex-1 overflow-y-auto" tabIndex={-1}>
             {children}
-          </div>
+          </main>
         </SidebarInset>
       </div>
     </ProtectedRoute>
@@ -106,8 +112,14 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <a
+        href="#main-content"
+        className="sr-only fixed left-4 top-4 z-[100] rounded-md bg-background px-4 py-2 text-sm font-semibold shadow-lg focus:not-sr-only focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Перейти к основному содержимому
+      </a>
       {showHeader && <Header />}
-      <main className="flex-1">
+      <main id="main-content" className="flex-1" tabIndex={-1}>
         <RouterContent />
       </main>
       <Toaster />

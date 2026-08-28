@@ -88,6 +88,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
@@ -173,6 +174,13 @@
   body {
     @apply min-w-0 bg-background font-sans text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  button,
+  a,
+  [role="button"],
+  [role="slider"] {
+    touch-action: manipulation;
   }
 
   ::selection {
