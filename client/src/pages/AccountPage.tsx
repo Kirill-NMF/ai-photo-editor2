@@ -71,11 +71,11 @@ export default function AccountPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 sm:pt-6">
               <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">
                 <div>
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 ring-4 ring-primary/10">
+                    <Avatar className="h-16 w-16 ring-4 ring-primary/10" data-testid="avatar-profile">
                       <AvatarImage src={user?.profileImageUrl || ""} />
                       <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
                     </Avatar>
