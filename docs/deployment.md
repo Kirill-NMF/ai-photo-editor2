@@ -14,7 +14,7 @@ Create `/etc/ai-photo-editor/ai-photo-editor.env` with mode `0640`, owned by `ro
 
 Keep the Beget bucket private. Its CORS policy must allow origin `https://ai-photo-editor.store`, methods `PUT`, `GET`, and `HEAD`, request headers used by the browser (or `*`), and expose `ETag`. No public-read bucket policy is required.
 
-The legacy Neon credential that was present in the historical Replit configuration must be revoked even though that file is no longer part of this release.
+The legacy database credential from the former hosted environment must be revoked even though its configuration file is no longer part of this release.
 
 ## Release procedure
 

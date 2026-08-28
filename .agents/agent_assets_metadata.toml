@@ -1,8 +1,0 @@
-uploads = []
-generated = []
-
-[[outputs]]
-id = "hC0lo62MZ8mm4sDZ2-BBf"
-uri = "file://all_skills.md"
-type = "text"
-title = "Все навыки Replit Agent (SKILL.md)"

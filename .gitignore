@@ -36,8 +36,5 @@ npm-debug.log*
 *.swp
 *.swo
 
-# Replit specific
-.replit
 .config
 .upm
-replit.nix

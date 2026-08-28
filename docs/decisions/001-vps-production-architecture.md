@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-The original application depended on Replit OIDC, a Replit object-storage sidecar and Neon-specific database transport. Production must run on an existing VPS without disturbing other services, use a clean database, support Google and Telegram login, keep user images private, and use Gemini as the only image-editing provider.
+The original application depended on platform-specific OIDC, a proprietary object-storage sidecar and a vendor-specific database transport. Production must run on an existing VPS without disturbing other services, use a clean database, support Google and Telegram login, keep user images private, and use Gemini as the only image-editing provider.
 
 ## Decision
 
@@ -32,7 +32,7 @@ Rejected for the first release because PostgreSQL and Caddy already run on the h
 
 Rejected because original user images must not be publicly enumerable or retrievable. Application-mediated reads keep authorization in one place.
 
-### Copying Replit/Neon data
+### Copying legacy hosted data
 
 Rejected because the requested launch is a clean start. The migration endpoint and legacy-provider compatibility code were removed.
 
