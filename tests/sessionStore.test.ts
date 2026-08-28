@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
 
 import { shouldUseMemorySessionStore } from "../server/auth/sessionStore";
@@ -25,7 +26,7 @@ test("normal development and production keep PostgreSQL-backed sessions", () => 
   const production = parseConfig({
     ...baseEnv,
     NODE_ENV: "production",
-    LOCAL_STORAGE_DIR: "C:\\photoai-storage",
+    LOCAL_STORAGE_DIR: path.resolve("test-storage"),
   });
 
   assert.equal(shouldUseMemorySessionStore(development), false);
