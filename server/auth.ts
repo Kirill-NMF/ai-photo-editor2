@@ -9,6 +9,7 @@ import { getConfig } from "./config";
 import { storage } from "./storage";
 import { mapGoogleClaims, type SessionUser } from "./auth/googleIdentity";
 import { registerDevelopmentAuth } from "./auth/devAuth";
+import { shouldUseMemorySessionStore } from "./auth/sessionStore";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const GOOGLE_STRATEGY = "google";
@@ -16,16 +17,19 @@ const GOOGLE_STRATEGY = "google";
 export function getSession() {
   const config = getConfig();
   const PgStore = connectPg(session);
+  const store = shouldUseMemorySessionStore(config)
+    ? undefined
+    : new PgStore({
+        conString: config.databaseUrl,
+        createTableIfMissing: true,
+        ttl: Math.floor(SESSION_TTL_MS / 1000),
+        tableName: "sessions",
+      });
 
   return session({
     name: "photoai.sid",
     secret: config.sessionSecret,
-    store: new PgStore({
-      conString: config.databaseUrl,
-      createTableIfMissing: true,
-      ttl: Math.floor(SESSION_TTL_MS / 1000),
-      tableName: "sessions",
-    }),
+    ...(store ? { store } : {}),
     resave: false,
     saveUninitialized: false,
     cookie: {

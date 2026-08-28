@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { AlertCircle, Check, RefreshCw, Sparkles, WandSparkles } from "lucide-react";
+import { AlertCircle, Check, FlaskConical, LoaderCircle, RefreshCw, Sparkles, WandSparkles } from "lucide-react";
 import { SiGoogle, SiTelegram } from "react-icons/si";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { isDevelopmentLoginAvailable, startDevelopmentLogin } from "@/lib/devAuth";
 import { hasTelegramWidgetFrame } from "@/lib/telegramWidget";
 import { useLocale } from "@/contexts/LocaleContext";
 
@@ -42,6 +43,11 @@ const copy = {
     welcome: "Welcome back",
     chooseMethod: "Choose how you want to sign in to open the editor and gallery.",
     google: "Continue with Google",
+    devLogin: "Enter as test user",
+    devLoginHint: "Local development only — no Google or Telegram account required.",
+    devLoginPending: "Opening local workspace…",
+    devLoginError: "Could not start the local test session. Please try again.",
+    devSeparator: "or use an account",
     or: "or",
     telegramLoading: "Connecting Telegram…",
     telegramError: "Telegram sign-in could not load. Try again or use Google.",
@@ -61,6 +67,11 @@ const copy = {
     welcome: "Добро пожаловать",
     chooseMethod: "Выберите удобный способ входа, чтобы открыть редактор и галерею.",
     google: "Войти через Google",
+    devLogin: "Войти как тестовый пользователь",
+    devLoginHint: "Только для локальной разработки — Google и Telegram не нужны.",
+    devLoginPending: "Открываем локальное пространство…",
+    devLoginError: "Не удалось создать локальную тестовую сессию. Попробуйте ещё раз.",
+    devSeparator: "или войдите через аккаунт",
     or: "или",
     telegramLoading: "Подключаем Telegram…",
     telegramError: "Не удалось загрузить вход через Telegram. Можно повторить или войти через Google.",
@@ -80,6 +91,9 @@ export default function LoginPage() {
   const [telegramLoading, setTelegramLoading] = useState(true);
   const [telegramWidgetStatus, setTelegramWidgetStatus] = useState<"loading" | "ready" | "error">("loading");
   const [telegramWidgetAttempt, setTelegramWidgetAttempt] = useState(0);
+  const [devAuthAvailable, setDevAuthAvailable] = useState(false);
+  const [devAuthPending, setDevAuthPending] = useState(false);
+  const [devAuthError, setDevAuthError] = useState(false);
 
   const errorCode = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("error")
@@ -91,6 +105,10 @@ export default function LoginPage() {
       setLocation("/editor");
     }
   }, [isAuthenticated, isLoading, setLocation]);
+
+  useEffect(() => {
+    void isDevelopmentLoginAvailable().then(setDevAuthAvailable);
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/telegram/config")
@@ -220,6 +238,56 @@ export default function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {devAuthAvailable && (
+                <>
+                  <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 p-3">
+                    <div className="mb-3 flex items-start gap-2.5 text-sm text-muted-foreground">
+                      <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      <span>{text.devLoginHint}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      size="lg"
+                      disabled={devAuthPending}
+                      onClick={async () => {
+                        setDevAuthPending(true);
+                        setDevAuthError(false);
+                        try {
+                          window.location.assign(await startDevelopmentLogin());
+                        } catch {
+                          setDevAuthError(true);
+                          setDevAuthPending(false);
+                        }
+                      }}
+                      data-testid="button-login-development"
+                    >
+                      {devAuthPending ? (
+                        <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <FlaskConical className="h-5 w-5" aria-hidden="true" />
+                      )}
+                      {devAuthPending ? text.devLoginPending : text.devLogin}
+                    </Button>
+                    {devAuthError && (
+                      <p className="mt-2 text-sm text-destructive" role="alert">
+                        {text.devLoginError}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="relative py-1">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                      <span className="bg-card px-3 text-muted-foreground">{text.devSeparator}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <Button
                 className="w-full"
                 size="lg"
