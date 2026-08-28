@@ -171,7 +171,7 @@
   }
 
   body {
-    @apply min-w-[320px] bg-background font-sans text-foreground antialiased;
+    @apply min-w-0 bg-background font-sans text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
