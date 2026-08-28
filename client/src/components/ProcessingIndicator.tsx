@@ -11,8 +11,8 @@ export default function ProcessingIndicator({
   message = "Generating your edited image..." 
 }: ProcessingIndicatorProps) {
   return (
-    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
-      <div className="bg-card border rounded-lg p-8 max-w-md w-full mx-4 space-y-6">
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm">
+      <div className="mx-4 w-full max-w-sm space-y-6 rounded-lg border bg-card p-6 shadow-xl sm:p-8">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <Loader2 className="h-12 w-12 text-primary animate-spin" />

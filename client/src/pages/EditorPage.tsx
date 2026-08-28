@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "wouter";
 import type { UploadResult } from "@uppy/core";
-import UploadZone from "@/components/UploadZone";
 import {
   ObjectUploader,
   type ObjectUploadBody,
@@ -9,12 +8,13 @@ import {
 } from "@/components/ObjectUploader";
 import ImageCanvas from "@/components/ImageCanvas";
 import EditHistory, { type HistoryItem } from "@/components/EditHistory";
-import PromptSuggestions from "@/components/PromptSuggestions";
 import ProcessingIndicator from "@/components/ProcessingIndicator";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload as UploadIcon, Sparkles, Menu } from "lucide-react";
+import { ArrowLeft, History, Image as ImageIcon, Menu, ShieldCheck, Sparkles, Upload as UploadIcon, WandSparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Image, Edit } from "@shared/schema";
@@ -694,10 +694,11 @@ export default function EditorPage() {
 
   if (!uploadedImage) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+      <div className="relative flex min-h-[calc(100svh-3.5rem)] items-center overflow-hidden bg-background px-4 py-10 sm:px-6">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_25%,hsl(var(--primary)/0.12),transparent_42%)]" />
         <div 
           ref={dropZoneRef}
-          className="relative w-full max-w-3xl space-y-12"
+          className="site-container relative max-w-5xl px-0 sm:px-0 lg:px-0"
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -705,9 +706,9 @@ export default function EditorPage() {
         >
           {/* Overlay when dragging */}
           {isDragging && (
-            <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg pointer-events-none z-10">
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary mb-2">
+                <div className="mb-2 text-3xl font-bold text-primary">
                   Drop image here
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -717,34 +718,57 @@ export default function EditorPage() {
             </div>
           )}
           
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold tracking-tight">Start Editing</h1>
-            <p className="text-lg text-muted-foreground">
-              Upload an image to begin your AI-powered transformation
+          <div className="mx-auto max-w-2xl text-center">
+            <Badge variant="outline" className="mb-5 gap-2 bg-background/70 shadow-xs">
+              <WandSparkles className="h-3.5 w-3.5 text-primary" />
+              New AI edit
+            </Badge>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">Start with one image</h1>
+            <p className="mx-auto mt-4 max-w-xl leading-7 text-muted-foreground sm:text-lg">
+              Upload a photo, then describe the change you want in plain language.
             </p>
           </div>
-          <div className="flex justify-center">
+          <div className="mt-9 flex justify-center">
             <ObjectUploader
               ref={uploaderRef}
               maxNumberOfFiles={1}
               maxFileSize={10 * 1024 * 1024}
               onComplete={handleUploadComplete}
-              buttonClassName={`h-72 w-full max-w-2xl border-2 border-dashed rounded-lg hover-elevate active-elevate-2 transition-all duration-200 ${isDragging ? 'border-primary bg-primary/5' : ''}`}
+              buttonClassName={`group h-72 w-full max-w-3xl rounded-xl border-2 border-dashed bg-card/80 shadow-sm transition-[border-color,background-color,box-shadow,transform] hover:border-primary/45 hover:bg-primary/[0.03] hover:shadow-md ${isDragging ? 'border-primary bg-primary/5' : 'border-border'}`}
             >
-              <div className="flex flex-col items-center gap-6">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
-                  <UploadIcon className="h-10 w-10 text-primary" />
+              <div className="flex flex-col items-center gap-5 whitespace-normal px-4">
+                <div className="inline-flex h-16 w-16 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 transition-transform group-hover:-translate-y-0.5">
+                  <UploadIcon className="h-7 w-7 text-primary" />
                 </div>
                 <div className="space-y-2 text-center">
-                  <p className="text-xl font-semibold">
-                    Click or drag'n'drop to upload an image
+                  <p className="text-lg font-semibold sm:text-xl">
+                    Click or drag and drop an image
                   </p>
-                  <p className="text-sm" style={{ color: '#cecece' }}>
-                    Supports JPEG, PNG, WebP (max 20MB)
+                  <p className="text-sm font-normal text-muted-foreground">
+                    JPEG, PNG, or WebP up to 10MB
                   </p>
                 </div>
               </div>
             </ObjectUploader>
+          </div>
+
+          <div className="mx-auto mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
+            {[
+              [ImageIcon, "One original", "Your source stays available"],
+              [History, "Version history", "Build on any earlier edit"],
+              [ShieldCheck, "Private files", "Protected account access"],
+            ].map(([Icon, title, description]) => {
+              const FeatureIcon = Icon as typeof ImageIcon;
+              return (
+                <div key={title as string} className="flex gap-3 rounded-lg border bg-muted/20 p-3.5 text-left">
+                  <FeatureIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">{title as string}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{description as string}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -753,24 +777,27 @@ export default function EditorPage() {
 
   return isMobile ? (
     // MOBILE LAYOUT
-    <div className="flex flex-col min-h-screen bg-background">
-      {/* Mobile Header with Hamburger Menu */}
-      <header className="flex justify-between items-center p-4 border-b bg-background sticky top-0 z-10">
-        <h1 className="text-lg font-bold">Photo Editor</h1>
+    <div className="flex min-h-full flex-col bg-background">
+      {/* Mobile editing toolbar */}
+      <div className="flex items-center justify-between border-b bg-muted/20 px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold">Editing tools</p>
+          <p className="text-xs text-muted-foreground">History and project actions</p>
+        </div>
         <button
           onClick={() => setShowMenu(true)}
-          className="p-2 hover-elevate active-elevate-2 rounded-lg"
+          className="rounded-md border bg-background p-2 shadow-2xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Open menu"
           data-testid="button-menu-mobile"
         >
           <Menu className="w-6 h-6" />
         </button>
-      </header>
+      </div>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4">
         {/* Image Preview */}
-        <div className="mb-4 relative">
+        <div className="relative mb-4 overflow-hidden rounded-lg border bg-muted/20 p-2 shadow-sm">
           {showComparison ? (
             (() => {
               const baseEdit = currentBaseEditId !== null 
@@ -781,7 +808,7 @@ export default function EditorPage() {
               const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
               
               return (
-                <div className="rounded-lg overflow-hidden shadow-lg">
+                <div className="overflow-hidden rounded-md">
                   <BeforeAfterSlider
                     beforeImage={baseImageUrl}
                     afterImage={afterImageUrl}
@@ -796,20 +823,20 @@ export default function EditorPage() {
             <img
               src={uploadedImage.currentUrl}
               alt="Editor preview"
-              className="w-full h-auto rounded-lg shadow-lg"
+              className="h-auto w-full rounded-md"
               data-testid="img-editor-preview"
             />
           )}
           {isProcessing && (
-            <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50">
               <ProcessingIndicator progress={65} />
             </div>
           )}
         </div>
 
         {/* Prompt Field - ABOVE Provider */}
-        <div className="mb-4">
-          <label className="block text-sm font-semibold mb-2">Describe Your Edit</label>
+        <Card className="mb-4 p-4">
+          <label className="mb-2 block text-sm font-semibold">Describe Your Edit</label>
           <Textarea
             placeholder="E.g., 'Make the sky more dramatic' or 'Add warm tones'"
             value={promptText}
@@ -824,16 +851,16 @@ export default function EditorPage() {
             className="min-h-[100px] resize-none"
             data-testid="input-prompt-mobile"
           />
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
             Press Enter to generate, Shift + Enter for new line
           </p>
-        </div>
+        </Card>
 
         {/* Generate Button */}
         <Button
           onClick={() => handlePromptSubmit(promptText)}
           disabled={isProcessing || !promptText.trim()}
-          className="w-full mb-3"
+          className="mb-3 w-full"
           size="lg"
           data-testid="button-generate-mobile"
         >
@@ -880,11 +907,11 @@ export default function EditorPage() {
     </div>
   ) : (
     // DESKTOP AND MEDIUM SCREEN LAYOUT
-    <div className="container mx-auto px-4 py-8 max-w-[1400px]">
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+    <div className="site-container max-w-[1500px] py-6 sm:py-8">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_1fr]">
         {/* Left Sidebar - Edit History (Desktop Only >= 1024px) */}
         <aside className="hidden lg:block">
-          <div className="sticky top-4 h-[calc(100vh-2rem)]">
+          <div className="sticky top-4 h-[calc(100svh-6.5rem)] overflow-hidden rounded-lg border bg-card shadow-xs">
             <EditHistory
               historyItems={historyItems}
               activeItemId={edits[0]?.id}
@@ -898,9 +925,13 @@ export default function EditorPage() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-5">
           {/* Top Actions with Hamburger Menu for Medium Screens */}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-2 shadow-xs">
+            <Badge variant="secondary" className="mr-auto hidden gap-1.5 sm:inline-flex">
+              <WandSparkles className="h-3.5 w-3.5 text-primary" />
+              Active project
+            </Badge>
             {isMediumScreen && (
               <Button 
                 variant="ghost" 
@@ -912,19 +943,19 @@ export default function EditorPage() {
                 <Menu className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="ghost" onClick={handleReset} data-testid="button-reset" className="gap-2">
+            <Button variant="ghost" size="sm" onClick={handleReset} data-testid="button-reset">
               <ArrowLeft className="h-4 w-4" />
               Upload Different Image
             </Button>
-            <Button variant="outline" onClick={handleNewProject} data-testid="button-new-project">
+            <Button variant="outline" size="sm" onClick={handleNewProject} data-testid="button-new-project">
               New Project
             </Button>
           </div>
 
           {/* Editor Area - Image and Control Panel Side by Side */}
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
             {/* Image Preview */}
-            <div className="flex justify-center items-start">
+            <Card className="flex min-h-[34rem] items-center justify-center overflow-hidden bg-muted/20 p-3 sm:p-5">
               <div className="relative w-full max-w-[450px] lg:max-w-[600px] 2xl:max-w-[750px]">
                 {showComparison ? (
                   (() => {
@@ -936,7 +967,7 @@ export default function EditorPage() {
                     const isUsingBase = currentBaseEditId !== null && baseEdit !== undefined;
                     
                     return (
-                      <div className="rounded-lg overflow-hidden shadow-lg">
+                      <div className="overflow-hidden rounded-lg border bg-background shadow-lg">
                         <BeforeAfterSlider
                           beforeImage={baseImageUrl}
                           afterImage={afterImageUrl}
@@ -951,20 +982,28 @@ export default function EditorPage() {
                   <ImageCanvas imageUrl={uploadedImage.currentUrl} />
                 )}
                 {isProcessing && (
-                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50">
                     <ProcessingIndicator progress={65} />
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
 
             {/* Control Panel */}
-            <div className="flex flex-col gap-4">
+            <Card className="flex flex-col gap-5 p-5 sm:p-6">
               {/* Prompt Field - FULL WIDTH, ABOVE AI Provider */}
               <div>
-                <label className="block text-sm font-semibold mb-2">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <WandSparkles className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <label className="block text-sm font-semibold">
                   Describe Your Edit
-                </label>
+                    </label>
+                    <p className="text-xs text-muted-foreground">Tell the AI what should change</p>
+                  </div>
+                </div>
                 <Textarea
                   placeholder="E.g., 'Make the sky more dramatic with sunset colors' or 'Add warm golden hour tones'"
                   value={promptText}
@@ -979,7 +1018,7 @@ export default function EditorPage() {
                   className="min-h-[120px] resize-none"
                   data-testid="input-prompt"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   Be specific for best results • Press Enter to generate, Shift + Enter for new line
                 </p>
               </div>
@@ -1004,14 +1043,17 @@ export default function EditorPage() {
               </div>
 
               {/* Quick Suggestions - COMPACT VERSION */}
-              <div className="mt-4">
-                <h3 className="text-sm font-semibold mb-3">Quick Suggestions</h3>
+              <div className="border-t pt-5">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Quick Suggestions
+                </h3>
                 <div className="grid grid-cols-1 gap-2">
                   {mockSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.id}
                       onClick={() => handleSuggestionSelect(suggestion.prompt)}
-                      className="p-3 text-left rounded-lg border hover-elevate active-elevate-2 transition-all group"
+                      className="group rounded-lg border bg-background p-3 text-left shadow-2xs transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       data-testid={`suggestion-${suggestion.id}`}
                     >
                       <div className="flex items-center gap-2">
@@ -1031,7 +1073,7 @@ export default function EditorPage() {
                   ))}
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </div>

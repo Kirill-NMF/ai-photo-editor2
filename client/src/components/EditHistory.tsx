@@ -34,12 +34,12 @@ export default function EditHistory({
   onUseAsBase 
 }: EditHistoryProps) {
   return (
-    <div className="flex flex-col h-full bg-card/50">
-      <div className="p-6 border-b space-y-4">
+    <div className="flex h-full flex-col bg-card/50">
+      <div className="space-y-4 border-b p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <History className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Edit History</h2>
+            <h2 className="text-base font-semibold">Edit History</h2>
           </div>
         </div>
         
@@ -61,11 +61,11 @@ export default function EditHistory({
       </div>
       
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-3">
+        <div className="space-y-3 p-3">
           {historyItems.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Sparkles className="h-8 w-8 text-primary" />
+            <div className="px-4 py-16 text-center">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <p className="text-sm font-medium text-foreground mb-1">No image uploaded</p>
               <p className="text-xs text-muted-foreground">

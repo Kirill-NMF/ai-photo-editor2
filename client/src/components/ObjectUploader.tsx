@@ -65,7 +65,7 @@ export const ObjectUploader = forwardRef<ObjectUploaderRef, ObjectUploaderProps>
   }));
 
   return (
-    <div>
+    <div className="w-full">
       <Button onClick={() => setShowModal(true)} className={buttonClassName} data-testid="button-upload">
         {children}
       </Button>

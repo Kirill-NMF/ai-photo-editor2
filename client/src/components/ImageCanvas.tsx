@@ -15,20 +15,20 @@ export default function ImageCanvas({ imageUrl, alt = "Editing canvas" }: ImageC
   const handleFit = () => setZoom(100);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-muted/30 rounded-lg">
-      <div className="max-h-[70vh] flex items-center justify-center">
+    <div className="relative flex h-full w-full items-center justify-center rounded-lg bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.06),transparent_62%)]">
+      <div className="flex max-h-[70vh] items-center justify-center overflow-hidden rounded-md">
         <img 
           src={imageUrl}
           alt={alt}
           style={{ transform: `scale(${zoom / 100})`, maxWidth: '100%', maxHeight: '70vh' }}
-          className="object-contain transition-transform duration-200 shadow-lg rounded-md"
+          className="rounded-md object-contain shadow-lg transition-transform duration-200"
           data-testid="img-canvas"
         />
       </div>
       
-      <div className="absolute bottom-4 right-4 flex gap-2">
+      <div className="absolute bottom-3 right-3 flex gap-1.5 rounded-lg border bg-background/90 p-1.5 shadow-md backdrop-blur">
         <Button
-          variant="secondary"
+          variant="ghost"
           size="icon"
           onClick={handleZoomOut}
           disabled={zoom <= 50}
@@ -37,7 +37,7 @@ export default function ImageCanvas({ imageUrl, alt = "Editing canvas" }: ImageC
           <ZoomOut className="h-4 w-4" />
         </Button>
         <Button
-          variant="secondary"
+          variant="ghost"
           size="icon"
           onClick={handleFit}
           data-testid="button-zoom-fit"
@@ -45,7 +45,7 @@ export default function ImageCanvas({ imageUrl, alt = "Editing canvas" }: ImageC
           <Maximize2 className="h-4 w-4" />
         </Button>
         <Button
-          variant="secondary"
+          variant="ghost"
           size="icon"
           onClick={handleZoomIn}
           disabled={zoom >= 200}
@@ -53,7 +53,7 @@ export default function ImageCanvas({ imageUrl, alt = "Editing canvas" }: ImageC
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
-        <div className="bg-secondary px-3 flex items-center rounded-md text-sm font-medium">
+        <div className="flex items-center rounded-md bg-muted px-2.5 text-xs font-medium">
           {zoom}%
         </div>
       </div>
