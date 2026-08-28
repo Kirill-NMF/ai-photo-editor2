@@ -107,14 +107,14 @@ Adapt PhotoAI to the visual language of the MIT-licensed Shadcn Landing Page ref
 **Description:** Translate the reference hero, product-preview, benefits, features, and CTA sections into PhotoAI-specific content and product visuals.
 
 **Acceptance criteria:**
-- [ ] Hero hierarchy, spacing, orange glow, CTA pairing, and product preview closely follow the reference.
-- [ ] Existing `/onboarding` and `/editor` CTA destinations remain unchanged.
-- [ ] Sections use real PhotoAI features and avoid irrelevant template content.
+- [x] Hero hierarchy, spacing, orange glow, CTA pairing, and product preview closely follow the reference.
+- [x] Existing `/onboarding` and `/editor` CTA destinations remain unchanged.
+- [x] Sections use real PhotoAI features and avoid irrelevant template content.
 
 **Verification:**
-- [ ] Visual comparison against the reference at desktop and mobile widths.
-- [ ] Links and CTA buttons navigate correctly.
-- [ ] No horizontal overflow or layout shift.
+- [x] Visual comparison against the reference at desktop and mobile widths.
+- [x] CTA destinations were verified as `/onboarding` and `/editor`.
+- [x] No horizontal overflow at 320px, 390px, 768px, 1024px, or 1440px.
 
 **Dependencies:** Task 3
 

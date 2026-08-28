@@ -1,148 +1,238 @@
 import { Link } from "wouter";
+import {
+  ArrowRight,
+  Clock3,
+  History,
+  Image as ImageIcon,
+  Layers3,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  WandSparkles,
+  Zap,
+} from "lucide-react";
+
+import { LandingEditorPreview } from "@/components/LandingEditorPreview";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Zap, Image as ImageIcon, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const steps = [
+  {
+    number: "01",
+    icon: Upload,
+    title: "Upload your image",
+    description: "Choose a JPEG, PNG, or WebP file and keep the original safely available throughout the edit.",
+  },
+  {
+    number: "02",
+    icon: WandSparkles,
+    title: "Describe the change",
+    description: "Write what you want in everyday language — from a warmer sky to a completely new visual mood.",
+  },
+  {
+    number: "03",
+    icon: Zap,
+    title: "Review and continue",
+    description: "Compare the result, build on earlier versions, and save the edit you want to keep.",
+  },
+];
+
+const features = [
+  {
+    icon: Layers3,
+    title: "Sequential editing",
+    description: "Apply a series of transformations without losing the visual context of the previous result.",
+    className: "md:col-span-2",
+  },
+  {
+    icon: History,
+    title: "Complete edit history",
+    description: "Return to any earlier version and use it as the base for your next idea.",
+  },
+  {
+    icon: ImageIcon,
+    title: "Personal gallery",
+    description: "Keep projects organized and open them again when you are ready to continue.",
+  },
+  {
+    icon: Sparkles,
+    title: "Prompt suggestions",
+    description: "Start faster with practical editing ideas shaped for image-to-image workflows.",
+    className: "md:col-span-2",
+  },
+];
+
+const trustPoints = [
+  {
+    icon: ShieldCheck,
+    title: "Private project files",
+    description: "Originals stay behind authenticated access.",
+  },
+  {
+    icon: Clock3,
+    title: "Fast workflow",
+    description: "Move from prompt to a new version without a complex toolset.",
+  },
+  {
+    icon: Sparkles,
+    title: "Nano Banana",
+    description: "Image edits run through the selected OpenRouter model.",
+  },
+];
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex-1">
-        <section className="relative py-20 px-6 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background -z-10" />
-          
-          <div className="max-w-7xl mx-auto text-center space-y-8">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
-              <Sparkles className="h-4 w-4" />
-              AI-Powered Photo Editing
-            </div>
-            
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-              Transform Your Photos with
-              <span className="text-primary"> AI Magic</span>
-            </h1>
-            
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Describe what you want in plain English and watch our AI transform your images instantly.
-              No complex tools, just your imagination.
-            </p>
-            
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+    <div className="overflow-hidden">
+      <section className="relative pb-16 pt-16 sm:pb-20 sm:pt-24 lg:pb-28 lg:pt-28">
+        <div className="absolute inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_50%_12%,hsl(var(--primary)/0.12),transparent_46%)]" />
+
+        <div className="site-container text-center">
+          <Badge variant="outline" className="mb-6 gap-2 border-primary/20 bg-background/75 px-3 py-1.5 shadow-xs backdrop-blur">
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
+              AI
+            </span>
+            Editing without complicated tools
+          </Badge>
+
+          <h1 className="mx-auto max-w-5xl text-balance text-4xl font-bold leading-[1.05] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
+            Turn a simple prompt into a
+            <span className="text-primary"> striking photo edit</span>
+          </h1>
+
+          <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+            Upload an image, describe your idea in plain language, and let PhotoAI create the next version while preserving your editing history.
+          </p>
+
+          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <Button asChild size="lg" className="group min-w-48" data-testid="button-get-started">
               <Link href="/onboarding">
-                <Button size="lg" className="text-lg h-12 px-8" data-testid="button-get-started">
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Get Started Free
-                </Button>
+                Start editing
+                <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
               </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="min-w-48" data-testid="button-try-editor">
               <Link href="/editor">
-                <Button variant="outline" size="lg" className="text-lg h-12 px-8" data-testid="button-try-editor">
-                  Try Editor
-                </Button>
+                <Sparkles />
+                Open editor
               </Link>
-            </div>
+            </Button>
           </div>
-        </section>
 
-        <section className="py-20 px-6 bg-muted/30">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
-            
-            <div className="grid md:grid-cols-3 gap-8">
-              <Card className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <ImageIcon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold">1. Upload Your Image</h3>
-                <p className="text-muted-foreground">
-                  Drag and drop or select any image from your device. Supports JPEG, PNG, and WebP formats.
-                </p>
-              </Card>
-              
-              <Card className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold">2. Describe Your Vision</h3>
-                <p className="text-muted-foreground">
-                  Tell our AI what you want in natural language. Make the sky dramatic, add warm tones, or any creative idea.
-                </p>
-              </Card>
-              
-              <Card className="p-6 space-y-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold">3. Get Instant Results</h3>
-                <p className="text-muted-foreground">
-                  Watch as AI transforms your image in seconds. Apply multiple edits sequentially and save your favorites.
-                </p>
-              </Card>
-            </div>
+          <div className="mt-14 sm:mt-16 lg:mt-20">
+            <LandingEditorPreview />
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="py-20 px-6">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-12">Key Features</h2>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="p-6 flex gap-4 hover-elevate">
-                <Clock className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-2">Sequential Editing</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Apply multiple AI transformations one after another, building on previous results.
-                  </p>
-                </div>
-              </Card>
-              
-              <Card className="p-6 flex gap-4 hover-elevate">
-                <ImageIcon className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-2">Edit History</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Track every transformation with full history. Return to any version at any time.
-                  </p>
-                </div>
-              </Card>
-              
-              <Card className="p-6 flex gap-4 hover-elevate">
-                <Sparkles className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-2">Smart Suggestions</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Get personalized prompt suggestions based on your editing style and preferences.
-                  </p>
-                </div>
-              </Card>
-              
-              <Card className="p-6 flex gap-4 hover-elevate">
-                <Zap className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-2">Personal Gallery</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Save your best edits to a personal gallery with before/after comparison.
-                  </p>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-20 px-6 bg-primary/5">
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl font-bold">Ready to Transform Your Photos?</h2>
-            <p className="text-lg text-muted-foreground">
-              Join thousands of creators using AI to enhance their images in seconds.
+      <section id="how-it-works" className="section-spacing scroll-mt-24 border-y bg-muted/25">
+        <div className="site-container grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+          <div className="lg:sticky lg:top-28 lg:self-start">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">How it works</p>
+            <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight sm:text-4xl">
+              From upload to finished edit in three clear steps
+            </h2>
+            <p className="mt-5 max-w-lg leading-7 text-muted-foreground">
+              The workflow stays focused on the creative decision. PhotoAI takes care of the model request, versions, and project history around it.
             </p>
-            <Link href="/onboarding">
-              <Button size="lg" className="text-lg h-12 px-8" data-testid="button-cta-bottom">
-                <Sparkles className="h-5 w-5 mr-2" />
-                Start Editing Now
-              </Button>
-            </Link>
           </div>
-        </section>
-      </div>
+
+          <ol className="divide-y border-y">
+            {steps.map(({ number, icon: Icon, title, description }) => (
+              <li key={number} className="grid gap-4 py-7 sm:grid-cols-[4rem_1fr] sm:gap-6 sm:py-9">
+                <div className="flex items-center gap-3 sm:block">
+                  <span className="text-sm font-semibold text-primary">{number}</span>
+                  <span className="ml-auto flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary sm:ml-0 sm:mt-4">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+                  <p className="mt-2 max-w-xl leading-7 text-muted-foreground">{description}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="features" className="section-spacing scroll-mt-24">
+        <div className="site-container">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Built for iteration</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Everything around the edit stays organized</h2>
+            <p className="mt-4 leading-7 text-muted-foreground">
+              A focused workspace for creating, comparing, and returning to the images that matter.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {features.map(({ icon: Icon, title, description, className }) => (
+              <Card
+                key={title}
+                className={cn(
+                  "group relative min-h-56 overflow-hidden p-6 transition-colors hover:border-primary/30",
+                  className,
+                )}
+              >
+                <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/0 blur-3xl transition-colors group-hover:bg-primary/10" />
+                <span className="relative flex h-11 w-11 items-center justify-center rounded-md border border-primary/15 bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="relative mt-8 text-xl font-semibold tracking-tight">{title}</h3>
+                <p className="relative mt-3 max-w-lg leading-7 text-muted-foreground">{description}</p>
+              </Card>
+            ))}
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {trustPoints.map(({ icon: Icon, title, description }) => (
+              <div key={title} className="flex gap-3 rounded-lg border bg-muted/20 p-4">
+                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <div>
+                  <h3 className="text-sm font-semibold">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-16 pt-4 sm:px-6 sm:pb-20 lg:px-8 lg:pb-24">
+        <div className="site-container relative overflow-hidden rounded-2xl bg-foreground px-6 py-14 text-background shadow-xl sm:px-10 sm:py-16 lg:px-16">
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/30 blur-3xl" />
+          <div className="absolute -bottom-40 left-1/3 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
+          <div className="relative mx-auto max-w-3xl text-center">
+            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <WandSparkles className="h-5 w-5" />
+            </span>
+            <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">Ready to see what your photo can become?</h2>
+            <p className="mx-auto mt-4 max-w-xl leading-7 text-background/65">
+              Start with one image and one clear idea. You can refine the result one version at a time.
+            </p>
+            <Button asChild size="lg" className="group mt-8 min-w-52" data-testid="button-cta-bottom">
+              <Link href="/onboarding">
+                Create your first edit
+                <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t py-8">
+        <div className="site-container flex flex-col items-center justify-between gap-4 text-center text-sm text-muted-foreground sm:flex-row sm:text-left">
+          <div className="flex items-center gap-2 font-medium text-foreground">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            PhotoAI
+          </div>
+          <p>AI image editing with project history and private originals.</p>
+        </div>
+      </footer>
     </div>
   );
 }

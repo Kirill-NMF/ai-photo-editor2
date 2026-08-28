@@ -4,7 +4,7 @@
 - [x] Record reference design decisions and MIT attribution.
 - [x] Install shared orange/neutral design tokens and primitive styling.
 - [ ] Rebuild public header and mobile navigation.
-- [ ] Recompose the PhotoAI landing page around the reference hero and section patterns.
+- [x] Recompose the PhotoAI landing page around the reference hero and section patterns.
 - [ ] Align login and onboarding screens.
 - [ ] Redesign the authenticated dashboard shell.
 - [ ] Redesign editor empty and active states without changing behavior.
