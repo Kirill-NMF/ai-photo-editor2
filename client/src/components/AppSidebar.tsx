@@ -1,19 +1,21 @@
-import { Sparkles, Image as ImageIcon, FolderOpen, User, LogOut } from "lucide-react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
+import { FolderOpen, Image as ImageIcon, LogOut, Sparkles, User } from "lucide-react";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
+  SidebarRail,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
@@ -41,7 +43,7 @@ export function AppSidebar() {
   const getInitials = () => {
     if (!user) return "?";
     if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+      return (user.firstName[0] + user.lastName[0]).toUpperCase();
     }
     if (user.email) {
       return user.email[0].toUpperCase();
@@ -52,7 +54,7 @@ export function AppSidebar() {
   const getDisplayName = () => {
     if (!user) return "User";
     if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
+      return user.firstName + " " + user.lastName;
     }
     if (user.firstName) return user.firstName;
     if (user.email) return user.email.split("@")[0];
@@ -60,30 +62,45 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-primary" />
-          <span className="font-semibold text-lg">Photo Editor AI</span>
-        </div>
+    <Sidebar variant="inset" collapsible="icon">
+      <SidebarHeader className="p-3">
+        <Link
+          href="/"
+          className="flex h-11 items-center gap-3 rounded-lg px-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          aria-label="PhotoAI home"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <span className="block truncate text-sm font-semibold tracking-tight">PhotoAI</span>
+            <span className="block truncate text-[11px] text-sidebar-foreground/55">Creative workspace</span>
+          </span>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+        <SidebarGroup className="px-3">
+          <SidebarGroupLabel className="px-2 text-[11px] uppercase tracking-[0.14em]">
+            Workspace
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1.5">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase().replace(" ", "-")}`}
+                    isActive={location === item.url || location.startsWith(item.url + "/")}
+                    tooltip={item.title}
+                    className="h-10 gap-3 px-3 data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary hover:bg-sidebar-accent"
                   >
-                    <a href={item.url}>
+                    <Link
+                      href={item.url}
+                      data-testid={"nav-" + item.title.toLowerCase().replace(" ", "-")}
+                    >
                       <item.icon />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -92,30 +109,38 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 space-y-2">
-        <div className="flex items-center gap-3 p-2">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={user?.profileImageUrl || ""} />
-            <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate" data-testid="text-user-name">
-              {getDisplayName()}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email || ""}</p>
-          </div>
+      <SidebarFooter className="p-3">
+        <div className="rounded-lg border border-sidebar-border bg-background/55 p-2 group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
+          <Link
+            href="/account"
+            className="flex min-w-0 items-center gap-3 rounded-md p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          >
+            <Avatar className="h-8 w-8 shrink-0">
+              <AvatarImage src={user?.profileImageUrl || ""} />
+              <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
+            </Avatar>
+            <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+              <span className="block truncate text-sm font-medium" data-testid="text-user-name">
+                {getDisplayName()}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">{user?.email || ""}</span>
+            </span>
+          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2 w-full justify-start text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:mt-1 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:px-2"
+            onClick={() => {
+              window.location.href = "/api/logout";
+            }}
+            data-testid="button-sidebar-logout"
+          >
+            <LogOut />
+            <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => window.location.href = "/api/logout"}
-          data-testid="button-sidebar-logout"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Logout
-        </Button>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }
