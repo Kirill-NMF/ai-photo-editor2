@@ -1,84 +1,87 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, FolderOpen } from "lucide-react";
 import { Link } from "wouter";
-import type { Project, Image } from "@shared/schema";
+import { ArrowUpRight, FolderOpen, Image as ImageIcon } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import type { Image, Project } from "@shared/schema";
 
 interface ProjectCardProps {
   project: Project & { originalImage?: Image };
   onOpenProject: () => void;
-  isAboveFold?: boolean; // Indicates if this card is in the first row (first 3 items)
+  isAboveFold?: boolean;
 }
 
 export default function ProjectCard({ project, onOpenProject, isAboveFold = false }: ProjectCardProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const thumbnailUrl = project.originalImage?.thumbnailUrl || project.originalImage?.currentUrl || "";
-  const projectName = project.name || `Project #${project.id}`;
+  const projectName = project.name || "Project #" + project.id;
 
   return (
-    <Card 
-      className="overflow-hidden hover-elevate active-elevate-2 cursor-pointer group" 
-      data-testid={`card-project-${project.id}`}
+    <Card
+      className="group overflow-hidden transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+      data-testid={"card-project-" + project.id}
     >
-      <div className="aspect-video relative overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {thumbnailUrl ? (
-          <div className={`relative w-full h-full ${!isLoaded ? 'bg-muted animate-pulse' : ''}`}>
+          <div className={"relative h-full w-full " + (!isLoaded ? "animate-pulse bg-muted" : "")}>
             <img
               src={thumbnailUrl}
               alt={projectName}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${
-                isLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={"h-full w-full object-cover transition-[opacity,transform] duration-500 group-hover:scale-[1.02] " + (
+                isLoaded ? "opacity-100" : "opacity-0"
+              )}
               loading={isAboveFold ? "eager" : "lazy"}
               onLoad={() => setIsLoaded(true)}
-              data-testid={`img-project-${project.id}`}
+              data-testid={"img-project-" + project.id}
             />
             {!isLoaded && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-muted-foreground/20 border-t-primary rounded-full animate-spin" />
+                <div className="h-7 w-7 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-primary" />
               </div>
             )}
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <FolderOpen className="h-12 w-12 text-muted-foreground/50" />
+          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.09),transparent_60%)]">
+            <ImageIcon className="h-10 w-10 text-muted-foreground/45" />
           </div>
         )}
+        <Badge className="absolute left-3 top-3 gap-1.5 border border-white/15 bg-black/60 text-white backdrop-blur">
+          <FolderOpen className="h-3 w-3" />
+          Project
+        </Badge>
       </div>
-      <CardContent className="p-4 space-y-3">
+
+      <CardContent className="space-y-4 p-4">
         <div>
-          <h3 className="font-semibold text-base line-clamp-1" data-testid={`text-project-name-${project.id}`}>
+          <h2 className="line-clamp-1 text-base font-semibold tracking-tight" data-testid={"text-project-name-" + project.id}>
             {projectName}
-          </h3>
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">Original plus saved edit versions</p>
         </div>
+
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenProject();
-            }}
-            className="flex-1 gap-2"
-            data-testid={`button-open-project-${project.id}`}
+            onClick={onOpenProject}
+            className="flex-1"
+            data-testid={"button-open-project-" + project.id}
           >
-            <FolderOpen className="h-4 w-4" />
-            Open Project
+            <FolderOpen />
+            Open
           </Button>
           {project.originalImage && (
-            <Link href={`/editor/${project.originalImage.id}`}>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={(e) => e.stopPropagation()}
-                className="gap-2"
-                data-testid={`button-open-editor-${project.id}`}
+            <Button asChild size="sm" className="flex-1">
+              <Link
+                href={"/editor/" + project.originalImage.id}
+                data-testid={"button-open-editor-" + project.id}
               >
-                <ExternalLink className="h-4 w-4" />
                 Editor
-              </Button>
-            </Link>
+                <ArrowUpRight />
+              </Link>
+            </Button>
           )}
         </div>
       </CardContent>

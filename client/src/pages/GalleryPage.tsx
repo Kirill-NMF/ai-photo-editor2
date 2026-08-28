@@ -1,78 +1,96 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { FolderOpen, LayoutGrid, Plus, Sparkles } from "lucide-react";
+
 import ProjectCard from "@/components/ProjectCard";
 import ProjectModal from "@/components/ProjectModal";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { Link } from "wouter";
-import type { Project, Image } from "@shared/schema";
+import { Card } from "@/components/ui/card";
+import type { Image, Project } from "@shared/schema";
 
 export default function GalleryPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch user's projects from the database
   const { data: projects = [], isLoading } = useQuery<(Project & { originalImage?: Image })[]>({
-    queryKey: ['/api/projects'],
+    queryKey: ["/api/projects"],
   });
 
-  // Pagination
   const itemsPerPage = 9;
   const totalPages = Math.ceil(projects.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentProjects = projects.slice(startIndex, endIndex);
+  const currentProjects = projects.slice(startIndex, startIndex + itemsPerPage);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Loading your projects...</p>
+      <div className="site-container py-8 sm:py-10">
+        <div className="mb-9 flex items-end justify-between gap-6">
+          <div className="space-y-3">
+            <div className="h-5 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-10 w-56 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="h-11 w-36 animate-pulse rounded-md bg-muted" />
         </div>
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <Card key={index} className="overflow-hidden">
+              <div className="aspect-[4/3] animate-pulse bg-muted" />
+              <div className="space-y-3 p-4">
+                <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
+                <div className="h-9 animate-pulse rounded bg-muted" />
+              </div>
+            </Card>
+          ))}
+        </div>
+        <p className="sr-only" role="status">Loading your projects...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 lg:py-16">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-12">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">My Projects</h1>
-            <p className="text-base text-muted-foreground">
-              {projects.length} {projects.length === 1 ? 'project' : 'projects'} in your collection
+    <div className="bg-background">
+      <div className="site-container py-8 sm:py-10 lg:py-12">
+        <div className="mb-9 flex flex-col gap-5 border-b pb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <Badge variant="outline" className="mb-4 gap-2 bg-muted/30">
+              <LayoutGrid className="h-3.5 w-3.5 text-primary" />
+              Project library
+            </Badge>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">My Projects</h1>
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+              {projects.length} {projects.length === 1 ? "project" : "projects"} in your collection
             </p>
           </div>
-          <Link href="/editor">
-            <Button size="lg" data-testid="button-new-project" className="gap-2">
-              <Plus className="h-4 w-4" />
+          <Button asChild size="lg" className="w-full sm:w-auto" data-testid="button-new-project">
+            <Link href="/editor">
+              <Plus />
               New Project
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         {projects.length === 0 ? (
-          <div className="text-center py-32">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
-              <Plus className="h-10 w-10 text-primary" />
-            </div>
-            <h2 className="text-2xl font-semibold mb-3">No projects yet</h2>
-            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Start by uploading and editing your first image to create a project
+          <Card className="relative overflow-hidden border-dashed px-6 py-20 text-center sm:py-28">
+            <div className="orange-glow absolute inset-0 -z-10 opacity-70" />
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+              <FolderOpen className="h-6 w-6" />
+            </span>
+            <h2 className="mt-6 text-2xl font-semibold tracking-tight">No projects yet</h2>
+            <p className="mx-auto mt-3 max-w-md leading-7 text-muted-foreground">
+              Upload an image and create your first AI edit. The original and every saved version will appear here.
             </p>
-            <div className="flex justify-center">
+            <Button asChild size="lg" className="mt-7" data-testid="button-start-editing">
               <Link href="/editor">
-                <Button size="lg" data-testid="button-start-editing" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Start Editing
-                </Button>
+                <Sparkles />
+                Start Editing
               </Link>
-            </div>
-          </div>
+            </Button>
+          </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {currentProjects.map((project, index) => (
                 <ProjectCard
                   key={project.id}
@@ -84,33 +102,28 @@ export default function GalleryPage() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-8">
-                {/* Previous Button */}
+              <nav className="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Gallery pages">
                 <Button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => setCurrentPage((previous) => Math.max(1, previous - 1))}
                   disabled={currentPage === 1}
                   variant="outline"
-                  className="px-4"
                   data-testid="button-pagination-prev"
                 >
                   Previous
                 </Button>
 
-                {/* Page Numbers */}
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    // Show first page, last page, current page, and pages around current
-                    const showPage = 
-                      page === 1 || 
-                      page === totalPages || 
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => {
+                    const showPage =
+                      page === 1 ||
+                      page === totalPages ||
                       Math.abs(page - currentPage) <= 1;
-                    
-                    const showEllipsis = 
+                    const showEllipsis =
                       (page === 2 && currentPage > 3) ||
                       (page === totalPages - 1 && currentPage < totalPages - 2);
 
                     if (showEllipsis) {
-                      return <span key={page} className="px-2 text-muted-foreground">...</span>;
+                      return <span key={page} className="px-2 text-muted-foreground">…</span>;
                     }
 
                     if (!showPage) return null;
@@ -119,9 +132,11 @@ export default function GalleryPage() {
                       <Button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        variant={currentPage === page ? "default" : "outline"}
-                        className="px-4"
-                        data-testid={`button-page-${page}`}
+                        variant={currentPage === page ? "default" : "ghost"}
+                        size="icon"
+                        aria-label={"Go to page " + page}
+                        aria-current={currentPage === page ? "page" : undefined}
+                        data-testid={"button-page-" + page}
                       >
                         {page}
                       </Button>
@@ -129,17 +144,15 @@ export default function GalleryPage() {
                   })}
                 </div>
 
-                {/* Next Button */}
                 <Button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() => setCurrentPage((previous) => Math.min(totalPages, previous + 1))}
                   disabled={currentPage === totalPages}
                   variant="outline"
-                  className="px-4"
                   data-testid="button-pagination-next"
                 >
                   Next
                 </Button>
-              </div>
+              </nav>
             )}
           </>
         )}
