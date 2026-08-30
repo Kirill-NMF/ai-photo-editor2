@@ -14,10 +14,17 @@ import { edits } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { editImageWithOpenRouter } from "./openRouterImage";
+import {
+  getImageDisplayDimensions,
+  normalizeImageReference,
+} from "./imageReference";
 import { generateThumbnailInBackground, generateEditThumbnailInBackground } from "./thumbnailHelpers";
 import { checkRateLimit, incrementRateLimit, isPromoCode, applyPromoCode } from './rateLimiting';
 import { consumePendingUpload, rememberPendingUpload } from "./storage/pendingUploads";
-import { imageUploadRequestSchema } from "./validation/imageUploadRequest";
+import {
+  imageUploadRequestSchema,
+  summarizeImageUploadValidation,
+} from "./validation/imageUploadRequest";
 
 declare module "express-session" {
   interface SessionData {
@@ -122,6 +129,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "Image is too large",
         "Invalid image contents",
       ].includes(error.message)) {
+        console.warn(JSON.stringify({
+          event: "image_upload_rejected",
+          requestId: res.locals.requestId,
+          status: 400,
+          reason: error.message,
+        }));
         return res.status(400).json({ error: error.message });
       }
       console.error("Error storing upload:", error);
@@ -160,6 +173,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
 
+      const storedImage = await objectStorageService.getObjectEntityFile(objectPath);
+      const [storedBody] = await storedImage.download();
+      const dimensions = await getImageDisplayDimensions(storedBody);
+
       // Create a new project for this image
       const project = await storage.createProject({
         userId,
@@ -173,9 +190,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         originalUrl: objectPath,
         currentUrl: objectPath,
         fileName: validatedData.fileName,
-        fileSize: validatedData.fileSize,
-        width: validatedData.width,
-        height: validatedData.height,
+        fileSize: storedBody.length,
+        width: dimensions.width,
+        height: dimensions.height,
       });
       req.session.pendingObjectPaths = remainingPendingUploads;
 
@@ -187,6 +204,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(image);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.warn(JSON.stringify({
+          event: "image_registration_rejected",
+          requestId: res.locals.requestId,
+          status: 400,
+          issues: summarizeImageUploadValidation(error),
+        }));
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       console.error("Error creating image:", error);
@@ -366,9 +389,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [sourceImageBuffer] = await imageFile.download();
       
       // Create a data URL from the buffer
-      const sourceImageBase64 = sourceImageBuffer.toString("base64");
       const contentType = (await imageFile.getMetadata())[0].contentType || "image/jpeg";
-      const imageDataUrl = `data:${contentType};base64,${sourceImageBase64}`;
+      const normalizedReference = await normalizeImageReference(sourceImageBuffer, contentType);
+      const sourceImageBase64 = normalizedReference.body.toString("base64");
+      const imageDataUrl = `data:${normalizedReference.contentType};base64,${sourceImageBase64}`;
 
       const editResult = await editImageWithOpenRouter({
         imageUrl: imageDataUrl,

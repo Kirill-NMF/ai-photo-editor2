@@ -4,9 +4,17 @@ import { setupVite, serveStatic, log } from "./vite";
 import { getConfig } from "./config";
 import { pool } from "./db";
 import { configureSecurity } from "./middleware/security";
+import { resolveRequestId } from "./observability/requestId";
 
 const app = express();
 configureSecurity(app);
+
+app.use((req, res, next) => {
+  const requestId = resolveRequestId(req.header("x-request-id"));
+  res.locals.requestId = requestId;
+  res.setHeader("x-request-id", requestId);
+  next();
+});
 
 declare module 'http' {
   interface IncomingMessage {
@@ -28,7 +36,7 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
+      log(`[${res.locals.requestId}] ${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
 

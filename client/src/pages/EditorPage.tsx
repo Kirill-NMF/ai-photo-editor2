@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, History, Image as ImageIcon, Menu, ShieldCheck, Sparkles, Upload as UploadIcon, WandSparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { getUploadFailureMessage } from "@/lib/uploadFeedback";
 import type { Image, Edit } from "@shared/schema";
 import { EditorCache, debounce } from "@/utils/editorCache";
 import {
@@ -112,17 +113,6 @@ export default function EditorPage() {
     { id: 5, prompt: "Transform the image into a cracked, 17th-century oil painting. Deep shadows (chiaroscuro), visible heavy brushstrokes, and a golden varnish finish. it's like rap album cover but without any writings", category: "Adjust style" }
   ];
 
-  const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        resolve({ width: img.width, height: img.height });
-      };
-      img.onerror = reject;
-      img.src = URL.createObjectURL(file);
-    });
-  };
-
   const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, ObjectUploadBody>) => {
     try {
       // Cancel any in-flight restore operations
@@ -135,16 +125,11 @@ export default function EditorPage() {
       const uploadedFile = result.successful[0];
       const uploadUrl = uploadedFile.uploadURL;
       
-      // Get image dimensions
-      const dimensions = await getImageDimensions(uploadedFile.data as File);
-
-      // Create image record in database
+      // The server derives authoritative size and display dimensions from the
+      // stored bytes so mobile browser metadata cannot block registration.
       const response = await apiRequest("POST", "/api/images", {
         uploadUrl,
         fileName: uploadedFile.name,
-        fileSize: uploadedFile.size || 0,
-        width: dimensions.width,
-        height: dimensions.height,
       });
 
       const image: Image = await response.json();
@@ -165,11 +150,17 @@ export default function EditorPage() {
       });
     } catch (error) {
       console.error("Error creating image record:", error);
+      const statusMatch = error instanceof Error ? /^(\d{3}):/.exec(error.message) : null;
+      const description = getUploadFailureMessage({
+        phase: "registration",
+        status: statusMatch ? Number(statusMatch[1]) : undefined,
+      });
       toast({
         title: "Upload failed",
-        description: "Failed to save image. Please try again.",
+        description,
         variant: "destructive",
       });
+      throw new Error(description);
     }
   };
 
