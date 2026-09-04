@@ -685,28 +685,7 @@ export default function EditorPage() {
     return (
       <div className="relative flex min-h-[calc(100svh-3.5rem)] items-center overflow-hidden bg-background px-4 py-10 sm:px-6">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_25%,hsl(var(--primary)/0.12),transparent_42%)]" />
-        <div 
-          ref={dropZoneRef}
-          className="site-container relative max-w-5xl px-0 sm:px-0 lg:px-0"
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {/* Overlay when dragging */}
-          {isDragging && (
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
-              <div className="text-center">
-                <div className="mb-2 text-3xl font-bold text-primary">
-                  Drop image here
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Release to upload
-                </div>
-              </div>
-            </div>
-          )}
-          
+        <div className="site-container relative max-w-5xl px-0 sm:px-0 lg:px-0">
           <div className="mx-auto max-w-2xl text-center">
             <Badge variant="outline" className="mb-5 gap-2 bg-background/70 shadow-xs">
               <WandSparkles className="h-3.5 w-3.5 text-primary" />
@@ -717,7 +696,26 @@ export default function EditorPage() {
               Upload a photo, then describe the change you want in plain language.
             </p>
           </div>
-          <div className="mt-9 flex justify-center">
+          <div
+            ref={dropZoneRef}
+            className="relative mx-auto mt-9 w-full max-w-3xl"
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {isDragging && (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
+                <div className="text-center">
+                  <div className="mb-2 text-3xl font-bold text-primary">
+                    Drop image here
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Release to upload
+                  </div>
+                </div>
+              </div>
+            )}
             <ObjectUploader
               ref={uploaderRef}
               maxNumberOfFiles={1}
