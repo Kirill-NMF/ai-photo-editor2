@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/LocaleContext";
+import { PremiumPlanCard } from "@/components/PremiumPlanCard";
 
 const copy = {
   en: {
@@ -207,6 +208,12 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section id="pricing" className="section-spacing scroll-mt-24 border-y bg-muted/25">
+        <div className="site-container max-w-4xl">
+          <PremiumPlanCard />
         </div>
       </section>
 

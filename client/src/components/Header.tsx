@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
+  CreditCard,
   Image as ImageIcon,
   LogIn,
   LogOut,
@@ -74,22 +75,30 @@ export default function Header() {
               </span>
             </Link>
 
-            {isAuthenticated && (
-              <nav aria-label={isRussian ? "Основная навигация" : "Main navigation"} className="hidden items-center gap-1 md:flex">
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/editor" data-testid="button-editor">
-                    <Sparkles />
-                    {isRussian ? "Редактор" : "Editor"}
-                  </Link>
-                </Button>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/gallery" data-testid="button-gallery">
-                    <ImageIcon />
-                    {isRussian ? "Галерея" : "Gallery"}
-                  </Link>
-                </Button>
-              </nav>
-            )}
+            <nav aria-label={isRussian ? "Основная навигация" : "Main navigation"} className="hidden items-center gap-1 md:flex">
+              <Button asChild variant="ghost" size="sm">
+                <a href="/#pricing" data-testid="button-pricing">
+                  <CreditCard />
+                  {isRussian ? "Тарифы" : "Pricing"}
+                </a>
+              </Button>
+              {isAuthenticated && (
+                <>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/editor" data-testid="button-editor">
+                      <Sparkles />
+                      {isRussian ? "Редактор" : "Editor"}
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/gallery" data-testid="button-gallery">
+                      <ImageIcon />
+                      {isRussian ? "Галерея" : "Gallery"}
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </nav>
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">

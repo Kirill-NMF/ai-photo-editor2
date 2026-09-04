@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { AlertTriangle, Download, FolderOpen, Image as ImageIcon, Layers3, Trash2 } from "lucide-react";
+import { AlertTriangle, FolderOpen, Image as ImageIcon, Layers3, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Project, Image, Edit } from "@shared/schema";
@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PremiumDownloadButton } from "@/components/PremiumDownloadButton";
 
 interface ProjectModalProps {
   projectId: number;
@@ -35,39 +36,6 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
     queryKey: ['/api/projects', projectId],
     enabled: isOpen && !!projectId,
   });
-
-  // Download handler function
-  const handleDownload = async (url: string, filename: string) => {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename || 'downloaded-image';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      window.URL.revokeObjectURL(blobUrl);
-      
-      toast({
-        title: "Download started",
-        description: `Downloading ${filename}`,
-      });
-    } catch (error) {
-      console.error('Download failed:', error);
-      toast({
-        title: "Download failed",
-        description: "Could not download the image. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Delete edit mutation
   const deleteEditMutation = useMutation({
@@ -178,16 +146,11 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                     />
                   </div>
                   <div className="flex flex-col gap-2 border-t bg-background p-3 sm:flex-row sm:justify-end">
-                    <Button
-                      variant="outline"
+                    <PremiumDownloadButton
                       size="sm"
-                      onClick={() => handleDownload(project.originalImage!.currentUrl, `original-${project.originalImage!.fileName}`)}
-                      className="gap-2 sm:w-auto"
+                      label="Download Original"
                       data-testid="button-download-original"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download Original
-                    </Button>
+                    />
                     <Button
                       variant="destructive"
                       size="sm"
@@ -231,16 +194,12 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                         <p className="truncate text-xs text-muted-foreground" title={image.fileName} data-testid={`text-filename-${image.id}`}>
                           {image.fileName}
                         </p>
-                        <Button
-                          variant="outline"
+                        <PremiumDownloadButton
                           size="sm"
-                          onClick={() => handleDownload(image.currentUrl, image.fileName)}
-                          className="w-full gap-2"
+                          className="w-full"
+                          wrapperClassName="w-full"
                           data-testid={`button-download-saved-${image.id}`}
-                        >
-                          <Download className="h-3 w-3" />
-                          Download
-                        </Button>
+                        />
                       </div>
                     </Card>
                   ))}
@@ -283,16 +242,12 @@ export default function ProjectModal({ projectId, isOpen, onClose }: ProjectModa
                           {edit.prompt}
                         </p>
                         <div className="flex flex-col gap-2 sm:flex-row">
-                          <Button
-                            variant="outline"
+                          <PremiumDownloadButton
                             size="sm"
-                            onClick={() => handleDownload(edit.resultUrl, `edit-${edit.id}.png`)}
-                            className="flex-1 gap-2"
+                            className="w-full"
+                            wrapperClassName="flex-1"
                             data-testid={`button-download-edit-${edit.id}`}
-                          >
-                            <Download className="h-3 w-3" />
-                            Download
-                          </Button>
+                          />
                           <Button
                             variant="destructive"
                             size="sm"

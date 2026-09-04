@@ -1,14 +1,15 @@
 import { useEffect } from "react";
 import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import PromptSuggestions from "@/components/PromptSuggestions";
 
 interface MobileBottomSheetProps {
   onClose: () => void;
-  suggestions: Array<{ id: number; prompt: string; category: string }>;
   onSelect: (prompt: string) => void;
+  onUnlockPremium: () => void;
 }
 
-export default function MobileBottomSheet({ onClose, suggestions, onSelect }: MobileBottomSheetProps) {
+export default function MobileBottomSheet({ onClose, onSelect, onUnlockPremium }: MobileBottomSheetProps) {
   // Handle Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -24,7 +25,9 @@ export default function MobileBottomSheet({ onClose, suggestions, onSelect }: Mo
   return (
     <>
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close suggestions"
         className="fixed inset-0 z-40 animate-in bg-black/60 backdrop-blur-[2px] fade-in duration-200"
         onClick={onClose}
       />
@@ -34,7 +37,7 @@ export default function MobileBottomSheet({ onClose, suggestions, onSelect }: Mo
         className="fixed inset-x-0 bottom-0 z-50 animate-in rounded-t-xl border-t bg-background shadow-2xl slide-in-from-bottom duration-300"
         role="dialog"
         aria-modal="true"
-        aria-label="Quick edit suggestions"
+        aria-label="Prompt preset collections"
       >
         {/* Handle */}
         <div className="flex justify-center pb-1 pt-2.5">
@@ -46,32 +49,18 @@ export default function MobileBottomSheet({ onClose, suggestions, onSelect }: Mo
           <div>
             <h3 className="flex items-center gap-2 text-base font-semibold">
               <Sparkles className="h-4 w-4 text-primary" />
-              Quick Suggestions
+              Prompt Presets
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground">Choose a starting prompt</p>
+            <p className="mt-1 text-xs text-muted-foreground">Choose a collection and a starting prompt</p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close suggestions">
+          <Button variant="ghost" size="icon" className="h-11 w-11" onClick={onClose} aria-label="Close suggestions">
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Suggestions List */}
-        <div className="max-h-[60vh] overflow-y-auto p-4">
-          <div className="space-y-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-            {suggestions.map((suggestion) => (
-              <button
-                key={suggestion.id}
-                onClick={() => onSelect(suggestion.prompt)}
-                className="w-full rounded-lg border bg-background p-4 text-left shadow-2xs transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                data-testid={`button-suggestion-${suggestion.id}`}
-              >
-                <div className="flex-1">
-                  <p className="font-medium">{suggestion.prompt}</p>
-                  <p className="text-sm text-muted-foreground mt-1 capitalize">{suggestion.category}</p>
-                </div>
-              </button>
-            ))}
-          </div>
+        <div className="max-h-[70vh] overscroll-contain overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <PromptSuggestions onSelect={onSelect} onUnlockPremium={onUnlockPremium} showHeading={false} />
         </div>
       </section>
     </>

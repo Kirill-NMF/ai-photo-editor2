@@ -24,6 +24,10 @@ export const PREMIUM_PLAN = {
   ],
 } as const;
 
+export function shouldBlockGeneration({ remaining, isAdmin }: { remaining: number; isAdmin: boolean }): boolean {
+  return !isAdmin && remaining <= 0;
+}
+
 export const PROMPT_PACKS: PromptPack[] = [
   {
     id: "quick",

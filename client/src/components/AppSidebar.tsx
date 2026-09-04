@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { FolderOpen, Image as ImageIcon, LogOut, Sparkles, User } from "lucide-react";
+import { CreditCard, FolderOpen, Image as ImageIcon, LogOut, Sparkles, User } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,11 @@ const menuItems = [
     title: { en: "Account", ru: "Аккаунт" },
     url: "/account",
     icon: User,
+  },
+  {
+    title: { en: "Pricing", ru: "Тарифы" },
+    url: "/pricing",
+    icon: CreditCard,
   },
 ];
 

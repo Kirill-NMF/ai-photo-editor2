@@ -27,8 +27,10 @@ import {
 import MobileBottomSheet from "@/components/MobileBottomSheet";
 import MobileSideDrawer from "@/components/MobileSideDrawer";
 import { useRateLimit } from "@/contexts/RateLimitContext";
-import { LimitReachedModal } from "@/components/LimitReachedModal";
 import { PromoCodeSuccessModal } from "@/components/PromoCodeSuccessModal";
+import PromptSuggestions from "@/components/PromptSuggestions";
+import { usePremiumPaywall } from "@/contexts/PremiumPaywallContext";
+import { shouldBlockGeneration } from "@/lib/premiumExperience";
 
 type EditWithUI = Edit & { isSaved: boolean };
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -43,12 +45,12 @@ export default function EditorPage() {
   const [overwriteLastSave, setOverwriteLastSave] = useState(false);
   const [promptText, setPromptText] = useState("");
   const { toast } = useToast();
+  const { openPaywall } = usePremiumPaywall();
   
   const [edits, setEdits] = useState<EditWithUI[]>([]);
   
   // Rate limiting state
   const { remaining, isAdmin, refresh: refreshRateLimit } = useRateLimit();
-  const [showLimitModal, setShowLimitModal] = useState(false);
   const [showPromoModal, setShowPromoModal] = useState(false);
   
   // Mobile state management
@@ -104,14 +106,6 @@ export default function EditorPage() {
       editsCount: edits.length
     });
   }, [showComparison, currentBaseEditId, edits.length]);
-
-  const mockSuggestions = [
-    { id: 1, prompt: "Render the subject with a 50% more athletic physique. Keep the clothing exactly the same, but show the physical changes through the fabric.", category: "Change body" },
-    { id: 2, prompt: "Dress the user in asap rocky like vibe clothing to be made entirely of flowing, reflective liquid gold. High contrast reflections, expensive luxury look.", category: "Change clothes" },
-    { id: 3, prompt: "Place a colossal, building-sized pigeon (bird) behind the user it has godzila head with fire-red eyes walking in the city background. It should look menacing like Godzilla. Low angle shot.", category: "Background object" },
-    { id: 4, prompt: "Apply a thermal heat-map aura outlining the body. The edges of the person should glow bright orange and red (hot), fading into deep blue (cold). Add distortion like a melted VHS tape around the limbs.", category: "Cool aura" },
-    { id: 5, prompt: "Transform the image into a cracked, 17th-century oil painting. Deep shadows (chiaroscuro), visible heavy brushstrokes, and a golden varnish finish. it's like rap album cover but without any writings", category: "Adjust style" }
-  ];
 
   const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, ObjectUploadBody>) => {
     try {
@@ -347,6 +341,10 @@ export default function EditorPage() {
 
   const handlePromptSubmit = async (prompt: string) => {
     if (!uploadedImage) return;
+    if (shouldBlockGeneration({ remaining, isAdmin })) {
+      openPaywall("limit");
+      return;
+    }
     
     setIsProcessing(true);
     console.log('Processing prompt:', prompt);
@@ -389,7 +387,7 @@ export default function EditorPage() {
         // Handle rate limit exceeded (429)
         if (response.status === 429) {
           refreshRateLimit().catch(err => console.error('Failed to refresh rate limit:', err));
-          setShowLimitModal(true);
+          openPaywall("limit");
           return;
         }
         
@@ -867,7 +865,7 @@ export default function EditorPage() {
           data-testid="button-show-suggestions"
         >
           <Sparkles className="h-4 w-4" />
-          Quick Suggestions
+          Prompt Presets
         </Button>
       </main>
 
@@ -875,10 +873,13 @@ export default function EditorPage() {
       {showQuickSuggestions && (
         <MobileBottomSheet
           onClose={() => setShowQuickSuggestions(false)}
-          suggestions={mockSuggestions}
           onSelect={(prompt) => {
             handleSuggestionSelect(prompt);
             setShowQuickSuggestions(false);
+          }}
+          onUnlockPremium={() => {
+            setShowQuickSuggestions(false);
+            openPaywall("presets");
           }}
         />
       )}
@@ -1033,36 +1034,12 @@ export default function EditorPage() {
                 )}
               </div>
 
-              {/* Quick Suggestions - COMPACT VERSION */}
+              {/* Prompt preset collections */}
               <div className="border-t pt-5">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  Quick Suggestions
-                </h3>
-                <div className="grid grid-cols-1 gap-2">
-                  {mockSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion.id}
-                      onClick={() => handleSuggestionSelect(suggestion.prompt)}
-                      className="group rounded-lg border bg-background p-3 text-left shadow-2xs transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      data-testid={`suggestion-${suggestion.id}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {suggestion.prompt}
-                          </p>
-                          {suggestion.category && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {suggestion.category}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                <PromptSuggestions
+                  onSelect={handleSuggestionSelect}
+                  onUnlockPremium={() => openPaywall("presets")}
+                />
               </div>
             </Card>
           </div>
@@ -1083,11 +1060,6 @@ export default function EditorPage() {
         />
       )}
       
-      {/* Rate Limit Modals */}
-      <LimitReachedModal 
-        isOpen={showLimitModal}
-        onClose={() => setShowLimitModal(false)}
-      />
       <PromoCodeSuccessModal 
         isOpen={showPromoModal}
         onClose={() => setShowPromoModal(false)}

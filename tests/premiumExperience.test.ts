@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   PREMIUM_PLAN,
   PROMPT_PACKS,
+  shouldBlockGeneration,
   type PaywallTrigger,
 } from "../client/src/lib/premiumExperience";
 
@@ -36,4 +37,10 @@ test("premium plan matches the approved demonstration offer", () => {
 test("all premium entry points share the same paywall trigger contract", () => {
   const triggers: PaywallTrigger[] = ["limit", "download", "presets", "pricing"];
   assert.equal(new Set(triggers).size, 4);
+});
+
+test("the next generation is blocked only after a free user reaches zero", () => {
+  assert.equal(shouldBlockGeneration({ remaining: 1, isAdmin: false }), false);
+  assert.equal(shouldBlockGeneration({ remaining: 0, isAdmin: false }), true);
+  assert.equal(shouldBlockGeneration({ remaining: 0, isAdmin: true }), false);
 });

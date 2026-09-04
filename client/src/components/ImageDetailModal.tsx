@@ -6,8 +6,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import BeforeAfterSlider from "./BeforeAfterSlider";
+import { PremiumDownloadButton } from "@/components/PremiumDownloadButton";
 
 interface ImageDetailModalProps {
   isOpen: boolean;
@@ -26,11 +27,6 @@ export default function ImageDetailModal({
   prompt,
   createdAt
 }: ImageDetailModalProps) {
-  const handleDownload = () => {
-    console.log('Download clicked');
-    // In real app, this would trigger download
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] max-w-6xl gap-0 overflow-y-auto p-0 [&>button]:hidden" data-testid="modal-image-detail">
@@ -67,10 +63,7 @@ export default function ImageDetailModal({
           </div>
           
           <div className="flex justify-end border-t pt-5">
-            <Button onClick={handleDownload} data-testid="button-download" className="w-full gap-2 sm:w-auto">
-              <Download className="h-4 w-4" />
-              Download Image
-            </Button>
+            <PremiumDownloadButton label="Download Image" data-testid="button-download" className="w-full sm:w-auto" wrapperClassName="w-full sm:w-auto" />
           </div>
         </div>
       </DialogContent>

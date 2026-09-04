@@ -13,11 +13,13 @@ import LoginPage from "@/pages/LoginPage";
 import EditorPage from "@/pages/EditorPage";
 import GalleryPage from "@/pages/GalleryPage";
 import AccountPage from "@/pages/AccountPage";
+import PricingPage from "@/pages/PricingPage";
 import NotFound from "@/pages/not-found";
 import { RateLimitProvider } from "@/contexts/RateLimitContext";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { ShieldCheck } from "lucide-react";
+import { PremiumPaywallProvider } from "@/contexts/PremiumPaywallContext";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -25,6 +27,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isRussian = locale === "ru";
   const pageTitle = location.startsWith("/gallery")
     ? (isRussian ? "Галерея" : "Gallery")
+    : location.startsWith("/pricing")
+      ? (isRussian ? "Тарифы" : "Pricing")
     : location.startsWith("/account")
       ? (isRussian ? "Аккаунт" : "Account")
       : (isRussian ? "Редактор" : "Image Editor");
@@ -86,6 +90,9 @@ function RouterContent() {
       <Route path="/account">
         <DashboardLayout><AccountPage /></DashboardLayout>
       </Route>
+      <Route path="/pricing">
+        <DashboardLayout><PricingPage /></DashboardLayout>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -96,11 +103,11 @@ function AppContent() {
   const { locale } = useLocale();
   
   // Routes that should not show the header
-  const noHeaderRoutes = ["/editor", "/gallery", "/account"];
+  const noHeaderRoutes = ["/editor", "/gallery", "/account", "/pricing"];
   const showHeader = !noHeaderRoutes.some(route => location.startsWith(route));
 
   // Routes that use the sidebar
-  const dashboardRoutes = ["/editor", "/gallery", "/account"];
+  const dashboardRoutes = ["/editor", "/gallery", "/account", "/pricing"];
   const useSidebar = dashboardRoutes.some(route => location.startsWith(route));
 
   const style = {
@@ -139,9 +146,11 @@ function App() {
     <LocaleProvider>
       <QueryClientProvider client={queryClient}>
         <RateLimitProvider>
-          <TooltipProvider>
-            <AppContent />
-          </TooltipProvider>
+          <PremiumPaywallProvider>
+            <TooltipProvider>
+              <AppContent />
+            </TooltipProvider>
+          </PremiumPaywallProvider>
         </RateLimitProvider>
       </QueryClientProvider>
     </LocaleProvider>
